@@ -85,61 +85,66 @@ var images = [
 var modalImg = ""
 
 export default function PayChecks() {
-    
-    const [sortType, setSortType] = React.useState('');
-    const [type, setType] = React.useState('');
-    const [openImg, setOpenImg] = React.useState(false);
-    const [paychecks, setPaychecks] = React.useState([]);
-    const [archivalLoading, setArchivalLoading] = React.useState();
-    const [approvedLoading, setApprovedLoading] = React.useState();
-    const [deleteLoading, setDeleteLoading] = React.useState();
-    const [startDate, setStartDate] = React.useState();
-    const [endDate, setEndDate] = React.useState();
-    const apiUrl = "http://127.0.0.1:8000/api"
-
-    const loadPaychecks = async () => {
-        var status = null;
-        if(type) {
-            if(type === 1)
-                status = true
-            else if(type === 2)
-                status = false
-        }
-        await axios.get(apiUrl + "/paychecks", {
-            date: sortType === 1 ? true : null,
-            sum: sortType === 2 ? true : null,
-            min_date: startDate ? startDate.split("-").reverse().join(".") : null,
-            max_date: endDate ? startDate.split("-").reverse().join(".") : null,
-            checked: status,
-            archived: type === 3 ? true : false
-        })
-        .then((response) => {
-            const allPaychecks = response.data
-            console.log(response.config)
-            setPaychecks(allPaychecks)
-        })
-    }
     var buttonsList = () => {
         let buttonsLoadingStatus = {
             approved: {},
             archive: {},
             delete: {}
         }
-        for (let i = 0; i < paychecks.length; i++) {
+        for (let i = 0; i < 10; i++) {
             buttonsLoadingStatus.approved[i] = false
             buttonsLoadingStatus.archive[i] = false
             buttonsLoadingStatus.delete[i] = false
         }
         return (buttonsLoadingStatus)
     }
+    const [sortType, setSortType] = React.useState();
+    const [type, setType] = React.useState('');
+    const [openImg, setOpenImg] = React.useState(false);
+    const [paychecks, setPaychecks] = React.useState([]);
+    const [archivalLoading, setArchivalLoading] = React.useState(Object.values(buttonsList().archive));
+    const [approvedLoading, setApprovedLoading] = React.useState(Object.values(buttonsList().approved));
+    const [deleteLoading, setDeleteLoading] = React.useState(Object.values(buttonsList().delete));
+    const [startDate, setStartDate] = React.useState();
+    const [endDate, setEndDate] = React.useState();
+    const [loadExcelButton, setLoadExcelButton] = React.useState(false)
+
+    const apiUrl = "http://127.0.0.1:8000/api"
+    const loadPaychecks = async () => {
+        let status = null;
+        if (type) {
+            if (type === 1)
+                status = true
+            else if (type === 2)
+                status = false
+        }
+        try {
+            await axios.get(apiUrl + "/paychecks", {
+                params: {
+                    date: sortType === 1 ? true : null,
+                    sum: sortType === 2 ? true : null,
+                    min_date: startDate ? startDate.split("-").reverse().join(".") : null,
+                    max_date: endDate ? endDate.split("-").reverse().join(".") : null,
+                    checked: status,
+                    archive: type === 3 ? true : false
+                }
+            })
+                .then((response) => {
+                    const allPaychecks = response.data
+                    setPaychecks(allPaychecks)
+                })
+        } catch (err){
+            console.log(err)
+        }
+        
+    }
     React.useEffect(() => {
-        loadPaychecks().then(() => {
-            buttonsList()
-            setArchivalLoading(Object.values(buttonsList().archive))
-            setApprovedLoading(Object.values(buttonsList().approved))
-            setDeleteLoading(Object.values(buttonsList().delete))
-        })
-    }, [setPaychecks])
+        loadPaychecks()
+    }, [sortType, type, startDate, endDate])
+
+
+
+
 
 
 
@@ -153,25 +158,23 @@ export default function PayChecks() {
     }
 
     const handleChange = (event) => {
+        console.log(event.target.value)
         setSortType(event.target.value);
-        loadPaychecks()
     };
 
     const typeChange = (event) => {
         setType(event.target.value)
-        loadPaychecks()
     };
 
-    const startDateChange = (value) => { 
+    const startDateChange = (value) => {
         console.log(value)
-        setStartDate(value) 
-        loadPaychecks()
+        setStartDate(value)
     }
-    const endDateChange = (value) => { 
-        console.log(value)
+    const endDateChange = (value) => {
         setEndDate(value)
-        loadPaychecks()
     }
+
+
 
 
 
@@ -186,13 +189,13 @@ export default function PayChecks() {
             return el
         });
         setApprovedLoading(temp)
-        try{
-            const response = await axios.post(apiUrl+"/paychecks/"+id+"/check")
-        } catch ($err){
-            console.log($err)
+        try {
+            const response = await axios.post(apiUrl + "/paychecks/" + id + "/check")
+            loadPaychecks()
+        } catch (err) {
+            console.log(err)
         }
         setApprovedLoading(oldtemp)
-        loadPaychecks()
     }
 
     const remove = async (id, index) => {
@@ -204,13 +207,13 @@ export default function PayChecks() {
             return el
         });
         setDeleteLoading(temp)
-        try{
-            const response = await axios.delete(apiUrl+"/paychecks/"+id)
-        } catch ($err){
-            console.log($err)
+        try {
+            const response = await axios.delete(apiUrl + "/paychecks/" + id)
+            loadPaychecks()
+        } catch (err) {
+            console.log(err)
         }
         setDeleteLoading(oldtemp)
-        loadPaychecks()
     }
 
 
@@ -224,13 +227,13 @@ export default function PayChecks() {
             return el
         });
         setArchivalLoading(temp)
-        try{
-            const response = await axios.post(apiUrl+"/paychecks/"+id+"/archive")
-        } catch ($err){
-            console.log($err)
+        try {
+            const response = await axios.post(apiUrl + "/paychecks/" + id + "/archive")
+            loadPaychecks()
+        } catch (err) {
+            console.log(err)
         }
         setArchivalLoading(oldtemp)
-        loadPaychecks()
     }
 
     function ApprovedButton(props) {
@@ -252,13 +255,26 @@ export default function PayChecks() {
                     <InboxIcon color='silver' fontSize='large' className='text-xl right-24 top-6 left-100 absolute'></InboxIcon>
                 </ThemeProvider>
             )
-        } else if (!props.checked&& props.archive) {
+        } else if (!props.checked && props.archive) {
             return (
                 <ThemeProvider theme={theme}>
                     <InboxIcon color='silver' fontSize='large' className='text-xl right-10 top-6 left-100 absolute'></InboxIcon>
                 </ThemeProvider>
             )
 
+        }
+    }
+
+    const createTable = async () => {
+        setLoadExcelButton(true)
+        try {
+            axios.get(apiUrl + '/sheet').then((response) => {
+                setLoadExcelButton(false)
+                window.open(response.data, '_blank')
+            })
+        } catch (err) {
+            setLoadExcelButton(false)
+            console.log(err)
         }
     }
 
@@ -284,7 +300,7 @@ export default function PayChecks() {
                                         <img src={images[index].img ?? null} onClick={() => handleOpenImg(images[index].img ?? null)} className='w-1/3 cursor-pointer rounded-xl' alt='Изображения нет'></img>
                                         <div className='ml-4 text-grafit text-lg w-full text-left flex flex-col justify-center h-full'>
                                             <div className='mb-2'>Имя: {payCheck.username}</div>
-                                        
+
                                             <div className='mb-2'>Компания: {payCheck.organization}</div>
                                             <div className='mb-2'>Населенный пункт: {payCheck.locality}</div>
                                             <div className='mb-2'>Способ оплаты: {payCheck.payment_method}</div>
@@ -341,11 +357,11 @@ export default function PayChecks() {
                             <div className='text-md mb-1 mt-3'>Дата:</div>
                             <div className='flex'>
                                 <div className=''>
-                                    <TextField id="outlined-basic" type='date' onChange={e => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    <TextField id="outlined-basic" type='date' onChange={(e) => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
                                 </div>
                                 <div className='text-xl text-black ml-3'> - </div>
                                 <div className='ml-3'>
-                                    <TextField id="outlined-basic" size='small' onChange={e => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    <TextField id="outlined-basic" size='small' onChange={(e) => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
                                 </div>
                             </div>
                             <div className='text-md mb-1 mt-3'>Статус:</div>
@@ -370,7 +386,7 @@ export default function PayChecks() {
                         </div>
                         <div className='mt-6'>
                             <ThemeProvider theme={theme}>
-                                <Button variant="contained" color='apple' startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</Button>
+                                <LoadingButton variant="contained" loading={loadExcelButton} color='apple' onClick={() => createTable()} startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</LoadingButton>
                             </ThemeProvider>
                         </div>
 
