@@ -1,4 +1,4 @@
-import { Box, Modal, TextField } from "@mui/material";
+import { Box, CircularProgress, Modal, TextField } from "@mui/material";
 import Sidebar from "../components/Sidebar";
 import React, { useEffect } from "react";
 import { ThemeProvider } from "@emotion/react";
@@ -58,13 +58,17 @@ export default function Companies() {
     const [companyName, setCompanyName] = React.useState("");
     const [modalIndex, setModalIndex] = React.useState(0);
     const [loadingSave, setLoadingSave] = React.useState(false)
-    const apiUrl = "http://127.0.0.1:8000"
+    const [loadCompaniesList, setLoadCompaniesList] = React.useState(false)
+    const apiUrl = "https://db41-94-181-117-147.ngrok-free.app"
+    axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
     const loadCompanies = async () => {
-        await axios.get(apiUrl+"/api/companies").then((response) => {
+        setLoadCompaniesList(true)
+        await axios.get(apiUrl+"/api/companies", Headers).then((response) => {
             const allCompanies = response.data
             setCompanies(allCompanies)
         })
+        setLoadCompaniesList(false)
     }
     React.useEffect(() => {
         loadCompanies()
@@ -173,7 +177,7 @@ export default function Companies() {
                     <div className=" w-[850px] flex justify-center flex-col items-center">
                         {!companies || companies.length === 0 ? (
                             <div className="w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5">
-                                Компаний нет
+                                {loadCompaniesList ? <CircularProgress /> : "Компаний нет"}
                             </div>
                         ) : (
                             companies.map((el, index) => {

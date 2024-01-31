@@ -7,7 +7,7 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import React, { useEffect } from 'react';
 import Input from '@mui/material/Input';
-import { Grid, SvgIcon, TextField } from '@mui/material';
+import { CircularProgress, Grid, SvgIcon, TextField } from '@mui/material';
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
 import { ReactComponent as ExcelIcon } from '../storage/excel-logo.svg'
@@ -108,8 +108,10 @@ export default function PayChecks() {
     const [startDate, setStartDate] = React.useState();
     const [endDate, setEndDate] = React.useState();
     const [loadExcelButton, setLoadExcelButton] = React.useState(false)
+    const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
+    axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
-    const apiUrl = "http://127.0.0.1:8000/api"
+    const apiUrl = "https://db41-94-181-117-147.ngrok-free.app/api"
     const loadPaychecks = async () => {
         let status = null;
         if (type) {
@@ -119,6 +121,7 @@ export default function PayChecks() {
                 status = false
         }
         try {
+            setLoadPaycheksList(true)
             await axios.get(apiUrl + "/paychecks", {
                 params: {
                     date: sortType === 1 ? true : null,
@@ -130,8 +133,13 @@ export default function PayChecks() {
                 }
             })
                 .then((response) => {
+                    console.log(response)
                     const allPaychecks = response.data
                     setPaychecks(allPaychecks)
+                    setTimeout(() => {
+                        setLoadPaycheksList(false)
+                    }, 1000);
+                    
                 })
         } catch (err){
             console.log(err)
@@ -289,7 +297,7 @@ export default function PayChecks() {
                     <div className=' w-[850px]'>
                         {!paychecks || paychecks.length === 0 ?
                             <div className='w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5'>
-                                Чеков нет
+                                 {loadPaycheksList ? <CircularProgress /> : "Чеков нет"}
                             </div>
                             :
                             paychecks.map((payCheck, index) => {
@@ -297,7 +305,7 @@ export default function PayChecks() {
                                     <div key={index} className='w-full mt-6 flex relative bg-white shadow-md shadow-white rounded-xl items-center p-5'>
                                         <StatusIcon checked={payCheck.checked} archive={payCheck.archive} />
                                         {/* <img src={payCheck.file} onClick={() => handleOpenImg(payCheck.file)} className='w-1/4 cursor-pointer rounded-xl' alt='Изображения нет'></img> */}
-                                        <img src={images[index].img ?? null} onClick={() => handleOpenImg(images[index].img ?? null)} className='w-1/3 cursor-pointer rounded-xl' alt='Изображения нет'></img>
+                                        <img src={payCheck['file'] ?? null} onClick={() => handleOpenImg(payCheck['file'] ?? null)} className='w-1/3 cursor-pointer rounded-xl' alt='Изображения нет'></img>
                                         <div className='ml-4 text-grafit text-lg w-full text-left flex flex-col justify-center h-full'>
                                             <div className='mb-2'>Имя: {payCheck.username}</div>
 
