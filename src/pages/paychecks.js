@@ -1,4 +1,4 @@
-import { ThemeProvider } from '@emotion/react';
+import { ThemeProvider, useTheme } from '@emotion/react';
 import Button from '@mui/material/Button'
 import { createTheme } from '@mui/material/styles';
 import InputLabel from '@mui/material/InputLabel';
@@ -16,6 +16,9 @@ import InboxIcon from '@mui/icons-material/Inbox';
 import { LoadingButton } from '@mui/lab';
 import Sidebar from '../components/Sidebar';
 import axios from 'axios';
+import MobileStepper from '@mui/material/MobileStepper';
+import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 
 const theme = createTheme({
     palette: {
@@ -59,6 +62,17 @@ const boxStyle = {
 
 
 var modalImg = ""
+const modalImages = [
+    {
+        src: "http://127.0.0.1:8000/file_0.jpg"
+    },
+    {
+        src: "http://127.0.0.1:8000/file_1.jpg"
+    },
+    {
+        src: "http://127.0.0.1:8000/file_2.jpg"
+    }
+]
 
 export default function PayChecks() {
     var buttonsList = () => {
@@ -85,9 +99,12 @@ export default function PayChecks() {
     const [endDate, setEndDate] = React.useState();
     const [loadExcelButton, setLoadExcelButton] = React.useState(false)
     const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
+    const [activeImg, setActiveImg] = React.useState(0)
+    const maxImages = modalImages.length
+    const stepperTheme = useTheme()
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
-    const apiUrl = "https://vostorg-api.skb-44.ru/api"
+    const apiUrl = "http://127.0.0.1:8000/api"
     const loadPaychecks = async () => {
         let status = null;
         if (type) {
@@ -158,6 +175,13 @@ export default function PayChecks() {
         setEndDate(value)
     }
 
+    const handleNext = () => {
+        setActiveImg((prevActiveStep) => prevActiveStep + 1);
+    };
+
+    const handleBack = () => {
+        setActiveImg((prevActiveStep) => prevActiveStep - 1);
+    };
 
 
 
@@ -212,9 +236,9 @@ export default function PayChecks() {
         });
         setArchivalLoading(temp)
         try {
-            
-            if(action === 0)
-                 await axios.post(apiUrl + "/paychecks/" + id + "/archive")
+
+            if (action === 0)
+                await axios.post(apiUrl + "/paychecks/" + id + "/archive")
             else
                 await axios.post(apiUrl + "/paychecks/" + id + "/restore")
             loadPaychecks()
@@ -340,8 +364,41 @@ export default function PayChecks() {
                         onClose={handleCloseImg}
                     >
                         <Box sx={boxStyle}>
-                            <div>
-                                <img src={modalImg} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+                            <div className='flex flex-col items-center'>
+                                <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+                                <MobileStepper
+                                    variant="text"
+                                    sx={{
+                                        backgroundColor: "grafit"
+                                    }}
+                                    steps={maxImages}
+                                    position="static"
+                                    activeStep={activeImg}
+                                    nextButton={
+                                        <Button
+                                            size="small"
+                                            onClick={handleNext}
+                                            disabled={activeImg === maxImages - 1}
+                                        >
+                                            
+                                            {stepperTheme.direction === 'rtl' ? (
+                                                <KeyboardArrowLeft />
+                                            ) : (
+                                                <KeyboardArrowRight />
+                                            )}
+                                        </Button>
+                                    }
+                                    backButton={
+                                        <Button size="small" onClick={handleBack} disabled={activeImg === 0}>
+                                            {stepperTheme.direction === 'rtl' ? (
+                                                <KeyboardArrowRight />
+                                            ) : (
+                                                <KeyboardArrowLeft />
+                                            )}
+                                            
+                                        </Button>
+                                    }
+                                />
                             </div>
                         </Box>
                     </Modal>
