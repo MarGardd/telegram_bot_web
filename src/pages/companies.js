@@ -59,7 +59,7 @@ export default function Companies() {
     const [modalIndex, setModalIndex] = React.useState(0);
     const [loadingSave, setLoadingSave] = React.useState(false)
     const [loadCompaniesList, setLoadCompaniesList] = React.useState(false)
-    const apiUrl = "http://127.0.0.1:8000"
+    const apiUrl = "https://vostorg-api.skb-44.ru"
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
     const loadCompanies = async () => {
