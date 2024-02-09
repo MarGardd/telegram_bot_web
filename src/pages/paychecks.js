@@ -104,11 +104,11 @@ export default function PayChecks() {
     const [loadExcelButton, setLoadExcelButton] = React.useState(false)
     const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
     const [activeImg, setActiveImg] = React.useState(0)
-    const maxImages = modalImages.length
+    const [paycheckModal, setPaycheckModal] = React.useState()
     const stepperTheme = useTheme()
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
-    const apiUrl = "https://vostorg-api.skb-44.ru/api"
+    const apiUrl = "http://127.0.0.1:8000/api"
     const loadPaychecks = async () => {
         let status = null;
         if (type) {
@@ -130,7 +130,6 @@ export default function PayChecks() {
                 }
             })
                 .then((response) => {
-                    console.log(response)
                     const allPaychecks = response.data
                     setPaychecks(allPaychecks)
                     setTimeout(() => {
@@ -147,19 +146,20 @@ export default function PayChecks() {
         loadPaychecks()
     }, [sortType, type, startDate, endDate])
 
-    
 
 
 
 
 
-    const handleOpenImg = (url) => {
-        modalImg = url;
+
+    const handleOpenImg = (paycheck) => {
+        setPaycheckModal(paycheck)
         setOpenImg(true);
     }
     const handleCloseImg = () => {
         setOpenImg(false);
-        modalImg = "";
+        setPaycheckModal()
+        setActiveImg(0)
     }
 
     const handleChange = (event) => {
@@ -187,19 +187,22 @@ export default function PayChecks() {
         setActiveImg((prevActiveStep) => prevActiveStep - 1);
     };
 
-    React.useEffect(()=>{
-        const handleKeyDown = (event) => {
-            if (event.key === 'ArrowLeft' && activeImg > 0) {
-                handleBack();
-              } else if (event.key === 'ArrowRight' && activeImg < maxImages) {
-                handleNext();
-              }
-        }
-        document.addEventListener('keydown', handleKeyDown)
+    React.useEffect(() => {
+        if (paycheckModal) {
+            const handleKeyDown = (event) => {
+                if (event.key === 'ArrowLeft' && activeImg > 0) {
+                    handleBack();
+                } else if (event.key === 'ArrowRight' && activeImg < paycheckModal['files'].length - 1) {
+                    handleNext();
+                }
+            }
+            document.addEventListener('keydown', handleKeyDown)
 
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
+            return () => {
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+        }
+
     }, [activeImg])
 
 
@@ -330,9 +333,9 @@ export default function PayChecks() {
                                 return (
                                     <div key={index} className='w-full mt-6 flex relative bg-white shadow-md shadow-white rounded-xl items-center p-5'>
                                         <StatusIcon checked={payCheck.checked} archive={payCheck.archive} />
-                                        {/* <img src={payCheck.file} onClick={() => handleOpenImg(payCheck.file)} className='w-1/4 cursor-pointer rounded-xl' alt='Изображения нет'></img> */}
+
                                         <div className='w-2/5 min-w-32'>
-                                            <img src={payCheck['file'] ?? null} onClick={() => handleOpenImg(payCheck['file'] ?? null)} className='w-full max-h-96  cursor-pointer rounded-xl' alt='Изображения нет'></img>
+                                            <img src={payCheck['files'][0]['path'] ?? null} onClick={() => handleOpenImg(payCheck)} className='w-full max-h-96  cursor-pointer rounded-xl' alt='Изображения нет'></img>
                                         </div>
 
                                         <div className='ml-4 text-grafit text-lg w-full flex-wrap text-left flex flex-col justify-center h-full'>
@@ -377,71 +380,72 @@ export default function PayChecks() {
                             })
                         }
                     </div>
-                    <Modal
-                        open={openImg}
-                        onClose={handleCloseImg}
-                    >
-                        <Box sx={boxStyle}>
-<<<<<<< HEAD
-                            <div className='flex flex-col items-center bg-milk'>
-                                <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
-=======
-                            <div className='flex flex-col items-center'>
-                                {modalImages[activeImg].src ?
-                                    <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
-                                    :
-                                    <div className='h-[360px] w-[240px] bg-white p-2'>
-                                        <label htmlFor='file-upload' className=' bg-black opacity-50 h-full rounded-lg cursor-pointer hover:opacity-65 flex justify-center items-center'>
-                                            <img src={plus} alt='Ошибка' />
-                                            <input
-                                                id="file-upload"
-                                                type="file"
-                                                className="hidden"
+
+                    {paycheckModal ?
+                        <Modal
+                            open={openImg}
+                            onClose={handleCloseImg}
+                        >
+                            <Box sx={boxStyle}>
+                                <div className='flex flex-col items-center bg-milk'>
+                                    {paycheckModal['files'][activeImg].path ?
+                                        <img src={paycheckModal['files'][activeImg].path} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+                                        :
+                                        <div className='h-[360px] w-[240px] bg-white p-2'>
+                                            <label htmlFor='file-upload' className=' bg-black opacity-50 h-full rounded-lg cursor-pointer hover:opacity-65 flex justify-center items-center'>
+                                                <img src={plus} alt='Ошибка' />
+                                                <input
+                                                    id="file-upload"
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
                                                 // onChange={handleFileChange}
-                                            />
-                                        </label>
-                                    </div>
-                                }
-
->>>>>>> 5ac2d9ddc31b10822a5990e1aa847062592ab0ee
-                                <MobileStepper
-                                    variant="text"
-                                    sx={{
-                                        backgroundColor: "#cfcdcd",
-                                        color: "black"
-                                    }}
-                                    steps={maxImages}
-                                    position="static"
-                                    activeStep={activeImg}
-                                    nextButton={
-                                        <Button
-                                            size="small"
-                                            onClick={handleNext}
-                                            disabled={activeImg === maxImages - 1}
-                                            
-                                        >
-
-                                            {stepperTheme.direction === 'rtl' ? (
-                                                <KeyboardArrowLeft  />
-                                            ) : (
-                                                <KeyboardArrowRight />
-                                            )}
-                                        </Button>
+                                                />
+                                            </label>
+                                        </div>
                                     }
-                                    backButton={
-                                        <Button size="small" onClick={handleBack} disabled={activeImg === 0}>
-                                            {stepperTheme.direction === 'rtl' ? (
-                                                <KeyboardArrowRight />
-                                            ) : (
-                                                <KeyboardArrowLeft />
-                                            )}
 
-                                        </Button>
-                                    }
-                                />
-                            </div>
-                        </Box>
-                    </Modal>
+                                    <MobileStepper
+                                        variant="text"
+                                        sx={{
+                                            backgroundColor: "#cfcdcd",
+                                            color: "black"
+                                        }}
+                                        steps={paycheckModal['files'].length}
+                                        position="static"
+                                        activeStep={activeImg}
+                                        nextButton={
+                                            <Button
+                                                size="small"
+                                                onClick={handleNext}
+                                                disabled={activeImg === paycheckModal['files'].length - 1}
+
+                                            >
+
+                                                {stepperTheme.direction === 'rtl' ? (
+                                                    <KeyboardArrowLeft />
+                                                ) : (
+                                                    <KeyboardArrowRight />
+                                                )}
+                                            </Button>
+                                        }
+                                        backButton={
+                                            <Button size="small" onClick={handleBack} disabled={activeImg === 0}>
+                                                {stepperTheme.direction === 'rtl' ? (
+                                                    <KeyboardArrowRight />
+                                                ) : (
+                                                    <KeyboardArrowLeft />
+                                                )}
+
+                                            </Button>
+                                        }
+                                    />
+                                </div>
+                            </Box>
+                        </Modal>
+                        :
+                        ""}
+
                     <div className='bg-white w-1/3 h-max ml-4 mt-6 rounded-xl shadow-md shadow-white p-4'>
                         <div>
                             <div className='text-md mb-1'>Сортировка:</div>
