@@ -19,6 +19,7 @@ import axios from 'axios';
 import MobileStepper from '@mui/material/MobileStepper';
 import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
+import plus from '../storage/plus.png'
 
 const theme = createTheme({
     palette: {
@@ -71,6 +72,9 @@ const modalImages = [
     },
     {
         src: "http://127.0.0.1:8000/file_2.jpg"
+    },
+    {
+        src: null
     }
 ]
 
@@ -104,7 +108,7 @@ export default function PayChecks() {
     const stepperTheme = useTheme()
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
-    const apiUrl = "http://127.0.0.1:8000/api"
+    const apiUrl = "https://vostorg-api.skb-44.ru/api"
     const loadPaychecks = async () => {
         let status = null;
         if (type) {
@@ -378,8 +382,28 @@ export default function PayChecks() {
                         onClose={handleCloseImg}
                     >
                         <Box sx={boxStyle}>
+<<<<<<< HEAD
                             <div className='flex flex-col items-center bg-milk'>
                                 <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+=======
+                            <div className='flex flex-col items-center'>
+                                {modalImages[activeImg].src ?
+                                    <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+                                    :
+                                    <div className='h-[360px] w-[240px] bg-white p-2'>
+                                        <label htmlFor='file-upload' className=' bg-black opacity-50 h-full rounded-lg cursor-pointer hover:opacity-65 flex justify-center items-center'>
+                                            <img src={plus} alt='Ошибка' />
+                                            <input
+                                                id="file-upload"
+                                                type="file"
+                                                className="hidden"
+                                                // onChange={handleFileChange}
+                                            />
+                                        </label>
+                                    </div>
+                                }
+
+>>>>>>> 5ac2d9ddc31b10822a5990e1aa847062592ab0ee
                                 <MobileStepper
                                     variant="text"
                                     sx={{
@@ -396,7 +420,7 @@ export default function PayChecks() {
                                             disabled={activeImg === maxImages - 1}
                                             
                                         >
-                                            
+
                                             {stepperTheme.direction === 'rtl' ? (
                                                 <KeyboardArrowLeft  />
                                             ) : (
@@ -411,7 +435,7 @@ export default function PayChecks() {
                                             ) : (
                                                 <KeyboardArrowLeft />
                                             )}
-                                            
+
                                         </Button>
                                     }
                                 />
