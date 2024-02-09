@@ -143,7 +143,7 @@ export default function PayChecks() {
         loadPaychecks()
     }, [sortType, type, startDate, endDate])
 
-
+    
 
 
 
@@ -183,6 +183,20 @@ export default function PayChecks() {
         setActiveImg((prevActiveStep) => prevActiveStep - 1);
     };
 
+    React.useEffect(()=>{
+        const handleKeyDown = (event) => {
+            if (event.key === 'ArrowLeft' && activeImg > 0) {
+                handleBack();
+              } else if (event.key === 'ArrowRight' && activeImg < maxImages) {
+                handleNext();
+              }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [activeImg])
 
 
 
@@ -364,12 +378,13 @@ export default function PayChecks() {
                         onClose={handleCloseImg}
                     >
                         <Box sx={boxStyle}>
-                            <div className='flex flex-col items-center'>
+                            <div className='flex flex-col items-center bg-milk'>
                                 <img src={modalImages[activeImg].src} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
                                 <MobileStepper
                                     variant="text"
                                     sx={{
-                                        backgroundColor: "grafit"
+                                        backgroundColor: "#cfcdcd",
+                                        color: "black"
                                     }}
                                     steps={maxImages}
                                     position="static"
@@ -379,10 +394,11 @@ export default function PayChecks() {
                                             size="small"
                                             onClick={handleNext}
                                             disabled={activeImg === maxImages - 1}
+                                            
                                         >
                                             
                                             {stepperTheme.direction === 'rtl' ? (
-                                                <KeyboardArrowLeft />
+                                                <KeyboardArrowLeft  />
                                             ) : (
                                                 <KeyboardArrowRight />
                                             )}
