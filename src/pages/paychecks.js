@@ -20,6 +20,7 @@ import MobileStepper from '@mui/material/MobileStepper';
 import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 import plus from '../storage/plus.png'
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const theme = createTheme({
     palette: {
@@ -163,7 +164,6 @@ export default function PayChecks() {
     }
 
     const handleChange = (event) => {
-        console.log(event.target.value)
         setSortType(event.target.value);
     };
 
@@ -172,7 +172,6 @@ export default function PayChecks() {
     };
 
     const startDateChange = (value) => {
-        console.log(value)
         setStartDate(value)
     }
     const endDateChange = (value) => {
@@ -186,6 +185,37 @@ export default function PayChecks() {
     const handleBack = () => {
         setActiveImg((prevActiveStep) => prevActiveStep - 1);
     };
+    const handleFileChange = (paycheck) => async (event) => {
+        try {
+            const selectedFile = event.target.files[0];
+            const formData = new FormData();
+            formData.set('file', selectedFile);
+            await axios.post(apiUrl + "/paychecks/" + paycheck['id'] + "/add-photo", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                },
+            }).then((response) => {
+                let index = paycheck.files.length - 1
+                paycheck.files.splice(index, 0, response.data)
+                loadPaychecks()
+            })
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
+    const deletePhoto = async (paycheck, image, index) => {
+        try{
+            await axios.delete(apiUrl+"/paychecks/photo/"+image.id).then(() => {
+                paycheck.files.splice(index, 1)
+                activeImg > 0 ? setActiveImg(activeImg--) : setActiveImg(activeImg++)
+                loadPaychecks()
+            })
+        } catch (err) {
+            console.log(err)
+        }
+        
+    }
 
     React.useEffect(() => {
         if (paycheckModal) {
@@ -203,14 +233,13 @@ export default function PayChecks() {
             };
         }
 
-    }, [activeImg])
+    }, [activeImg, paycheckModal])
 
 
 
 
     const approved = async (index, id) => {
         let oldtemp = Object.values(buttonsList().approved)
-        console.log(id)
         const temp = Object.values(approvedLoading).map((el, i) => {
             if (index === i) {
                 el = true
@@ -389,7 +418,13 @@ export default function PayChecks() {
                             <Box sx={boxStyle}>
                                 <div className='flex flex-col items-center bg-milk'>
                                     {paycheckModal['files'][activeImg].path ?
-                                        <img src={paycheckModal['files'][activeImg].path} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'></img>
+                                        <div className='relative'>
+                                            <img src={paycheckModal['files'][activeImg].path} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'>
+                                            </img>
+                                            <button onClick={()=> deletePhoto(paycheckModal ,paycheckModal['files'][activeImg], activeImg)} className='p-2 bg-black absolute opacity-25 bottom-7 left-1/2 -translate-x-1/2 rounded-lg cursor-pointer hover:opacity-65'>
+                                                <DeleteIcon style={{color: 'white'}}/>
+                                            </button>
+                                        </div>
                                         :
                                         <div className='h-[360px] w-[240px] bg-white p-2'>
                                             <label htmlFor='file-upload' className=' bg-black opacity-50 h-full rounded-lg cursor-pointer hover:opacity-65 flex justify-center items-center'>
@@ -399,9 +434,10 @@ export default function PayChecks() {
                                                     type="file"
                                                     className="hidden"
                                                     accept="image/*"
-                                                // onChange={handleFileChange}
+                                                    onChange={handleFileChange(paycheckModal)}
                                                 />
                                             </label>
+
                                         </div>
                                     }
 
