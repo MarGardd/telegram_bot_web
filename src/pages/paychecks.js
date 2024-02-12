@@ -21,6 +21,11 @@ import KeyboardArrowLeft from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 import plus from '../storage/plus.png'
 import DeleteIcon from '@mui/icons-material/Delete';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+import OutlinedInput from '@mui/material/OutlinedInput';
+import ListItemText from '@mui/material/ListItemText';
 
 const theme = createTheme({
     palette: {
@@ -60,24 +65,34 @@ const boxStyle = {
     boxShadow: 24,
 };
 
+const companies = [
+    'Oliver Hansen',
+    'Van Henry',
+    'April Tucker',
+    'Ralph Hubbard',
+    'Omar Alexander',
+    'Carlos Abbott',
+    'Miriam Wagner',
+    'Bradley Wilkerson',
+    'Virginia Andrews',
+    'Kelly Snyder',
+];
+
+const ITEM_HEIGHT = 48;
+const ITEM_PADDING_TOP = 8;
+const MenuProps = {
+  PaperProps: {
+    style: {
+      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+      width: 200,
+    },
+  },
+};
 
 
 
-var modalImg = ""
-const modalImages = [
-    {
-        src: "http://127.0.0.1:8000/file_0.jpg"
-    },
-    {
-        src: "http://127.0.0.1:8000/file_1.jpg"
-    },
-    {
-        src: "http://127.0.0.1:8000/file_2.jpg"
-    },
-    {
-        src: null
-    }
-]
+
+
 
 export default function PayChecks() {
     var buttonsList = () => {
@@ -106,6 +121,9 @@ export default function PayChecks() {
     const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
     const [activeImg, setActiveImg] = React.useState(0)
     const [paycheckModal, setPaycheckModal] = React.useState()
+    const [companyName, setCompanyName] = React.useState([]);
+    const [loadSetFilters, setLoadSetFilters] = React.useState(false)
+    const [loadRemoveFilters, setLoadRemoveFilters] = React.useState(false)
     const stepperTheme = useTheme()
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
@@ -205,8 +223,8 @@ export default function PayChecks() {
     }
 
     const deletePhoto = async (paycheck, image, index) => {
-        try{
-            await axios.delete(apiUrl+"/paychecks/photo/"+image.id).then(() => {
+        try {
+            await axios.delete(apiUrl + "/paychecks/photo/" + image.id).then(() => {
                 paycheck.files.splice(index, 1)
                 activeImg > 0 ? setActiveImg(activeImg--) : setActiveImg(activeImg++)
                 loadPaychecks()
@@ -214,7 +232,7 @@ export default function PayChecks() {
         } catch (err) {
             console.log(err)
         }
-        
+
     }
 
     React.useEffect(() => {
@@ -344,6 +362,28 @@ export default function PayChecks() {
         }
     }
 
+    const companyFilterChange = (event) => {
+        let value = event.target.value
+        setCompanyName(typeof value === 'string' ? value.split(',') : value)
+        console.log(companyName)
+    };
+
+    const sellerFilterChange = (event) => {
+        console.log(event.target.value)
+    }
+
+    const setFilters = () => {
+        setLoadSetFilters(true)
+        loadPaychecks()
+        setLoadSetFilters(false)
+    }
+
+    const removeFilters = () => {
+        setLoadRemoveFilters(true)
+        loadPaychecks()
+        setLoadRemoveFilters(false)
+    }
+
 
     return (
         <div>
@@ -421,8 +461,8 @@ export default function PayChecks() {
                                         <div className='relative'>
                                             <img src={paycheckModal['files'][activeImg].path} alt='Ошибка. Изображения нет :(' className=' max-h-[780px]'>
                                             </img>
-                                            <button onClick={()=> deletePhoto(paycheckModal ,paycheckModal['files'][activeImg], activeImg)} className='p-2 bg-black absolute opacity-25 bottom-7 left-1/2 -translate-x-1/2 rounded-lg cursor-pointer hover:opacity-65'>
-                                                <DeleteIcon style={{color: 'white'}}/>
+                                            <button onClick={() => deletePhoto(paycheckModal, paycheckModal['files'][activeImg], activeImg)} className='p-2 bg-black absolute opacity-25 bottom-7 left-1/2 -translate-x-1/2 rounded-lg cursor-pointer hover:opacity-65'>
+                                                <DeleteIcon style={{ color: 'white' }} />
                                             </button>
                                         </div>
                                         :
@@ -481,63 +521,110 @@ export default function PayChecks() {
                         </Modal>
                         :
                         ""}
-
-                    <div className='bg-white w-1/3 h-max ml-4 mt-6 rounded-xl shadow-md shadow-white p-4'>
-                        <div>
-                            <div className='text-md mb-1'>Сортировка:</div>
-                            <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
-                                <InputLabel id="select-sort-label"></InputLabel>
-                                <Select
-                                    labelId="select-sort-label"
-                                    id="select-sort"
-                                    value={sortType ? sortType : 1}
-                                    label=""
-                                    onChange={handleChange}
-                                    className='rounded-lg border-white'
-                                >
-                                    <MenuItem value={1}>Дата создания</MenuItem>
-                                    <MenuItem value={2}>Сумма</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <div className='text-md mb-1 mt-3'>Дата создания:</div>
-                            <div className='flex flex-col w-max justify-center items-center 2xl:flex-row'>
-                                <div className=''>
-                                    <TextField id="outlined-basic" type='date' onChange={(e) => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
-                                </div>
-                                <div className='text-xl text-black w-full text-center 2xl:w-auto 2xl:text-left 2xl:ml-3'> - </div>
-                                <div className='2xl:ml-3'>
-                                    <TextField id="outlined-basic" size='small' onChange={(e) => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
-                                </div>
+                    <div className='flex flex-col w-1/3'>
+                        <div className='bg-white h-max ml-4 mt-6 rounded-xl shadow-md shadow-white p-4'>
+                            <div>
+                                <div className='text-lg font-bold mb-2'>Сортировка</div>
+                                <FormGroup>
+                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Дата создания" />
+                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Проект" />
+                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Город" />
+                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Дата оплаты" />
+                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Компания" />
+                                </FormGroup>
                             </div>
-                            <div className='text-md mb-1 mt-3'>Статус:</div>
-                            <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
-                                <InputLabel></InputLabel>
-                                <Select
-                                    id="select-type"
-                                    value={type ? type : 0}
-                                    label=""
-                                    onChange={typeChange}
-                                    className='rounded-lg border-white'
-                                >
-                                    {/* <MenuItem value="">
-                  <em>Не выбрано</em>
-                </MenuItem> */}
-                                    <MenuItem value={0}>Все</MenuItem>
-                                    <MenuItem value={1}>Проверено</MenuItem>
-                                    <MenuItem value={2}>Не проверено</MenuItem>
-                                    <MenuItem value={3}>Архивные</MenuItem>
-                                </Select>
-                            </FormControl>
                         </div>
-                        <div className='mt-6'>
-                            <ThemeProvider theme={theme}>
-                                <LoadingButton variant="contained" loading={loadExcelButton} color='apple' onClick={() => createTable()} startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</LoadingButton>
-                            </ThemeProvider>
-                        </div>
+                        <div className='bg-white h-max ml-4 mt-6 rounded-xl shadow-md shadow-white p-4'>
+                            <div>
+                                <div className='text-lg font-bold mb-2'>Фильтры</div>
+                                {/* <div className='text-md mb-1'>Сортировка:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
+                                    <InputLabel id="select-sort-label"></InputLabel>
+                                    <Select
+                                        labelId="select-sort-label"
+                                        id="select-sort"
+                                        value={sortType ? sortType : 1}
+                                        label=""
+                                        onChange={handleChange}
+                                        className='rounded-lg border-white'
+                                    >
+                                        <MenuItem value={1}>Дата создания</MenuItem>
+                                        <MenuItem value={2}>Сумма</MenuItem>
+                                    </Select>
+                                </FormControl> */}
+                                <div className='text-md mb-1 mt-3'>Дата создания:</div>
+                                <div className='flex flex-col w-max justify-center items-center 2xl:flex-row'>
+                                    <div className=''>
+                                        <TextField id="outlined-basic" type='date' onChange={(e) => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                    <div className='text-xl text-black w-full text-center 2xl:w-auto 2xl:text-left 2xl:ml-3'> - </div>
+                                    <div className='2xl:ml-3'>
+                                        <TextField id="outlined-basic" size='small' onChange={(e) => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                </div>
+                                <div className='text-md mb-1 mt-3'>Статус:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
+                                    <InputLabel></InputLabel>
+                                    <Select
+                                        id="select-type"
+                                        value={type ? type : 0}
+                                        label=""
+                                        onChange={typeChange}
+                                        className='rounded-lg border-white'
+                                    >
+                                        <MenuItem value={0}>Все</MenuItem>
+                                        <MenuItem value={1}>Проверено</MenuItem>
+                                        <MenuItem value={2}>Не проверено</MenuItem>
+                                        <MenuItem value={3}>Архивные</MenuItem>
+                                    </Select>
+                                </FormControl>
 
+                                <div className='text-md mb-1 mt-3'>Компания:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg'>
+                                    <InputLabel></InputLabel>
+                                    <Select
+                                        multiple
+                                        value={companyName}
+                                        onChange={companyFilterChange}
+                                        input={<OutlinedInput label="Tag" />}
+                                        renderValue={(selected) => selected.join(', ')}
+                                        MenuProps={MenuProps}
+                                        className='rounded-lg border-white'
+                                    >
+                                        {companies.map((name) => (
+                                            <MenuItem key={name} value={name}>
+                                                <Checkbox checked={companyName.indexOf(name) > -1} />
+                                                <ListItemText primary={name} />
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
+                                <div className='text-md mb-1 mt-3'>Продавец:</div>
+                                <TextField  variant="outlined" size="small" onChange={sellerFilterChange} className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg' />
+                            </div>
+                            <div className='mt-6 flex-col flex w-max'>
+                                <ThemeProvider theme={theme}>
+                                    <LoadingButton sx={{
+                                        marginBottom: 2,
+                                        textTransform: "none",
+                                        width: "max"
+                                    }} variant="contained" loading={loadSetFilters} color='silver' onClick={() => setFilters()}>Применить</LoadingButton>
+                                    <LoadingButton sx={{
+                                        marginBottom: 2,
+                                        textTransform: "none",
+                                        width: "max"
+                                    }} variant="contained" loading={loadRemoveFilters} color='grafit' onClick={() => removeFilters()}>Сбросить фильтры</LoadingButton>
+                                </ThemeProvider>
+                            </div>
+                            <div className='mt-6'>
+                                <ThemeProvider theme={theme}>
+                                    <LoadingButton variant="contained" sx={{textTransform: "none"}} loading={loadExcelButton} color='apple' onClick={() => createTable()} startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</LoadingButton>
+                                </ThemeProvider>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
             </div >
         </div >
     );
