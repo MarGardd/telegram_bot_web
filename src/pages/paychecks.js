@@ -7,7 +7,7 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import React, { useEffect } from 'react';
 import Input from '@mui/material/Input';
-import { CircularProgress, Grid, SvgIcon, TextField } from '@mui/material';
+import { CircularProgress, Grid, IconButton, SvgIcon, TextField } from '@mui/material';
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
 import { ReactComponent as ExcelIcon } from '../storage/excel-logo.svg'
@@ -26,6 +26,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import ListItemText from '@mui/material/ListItemText';
+import { BorderColorOutlined, Close, Done, Edit } from '@mui/icons-material';
 
 const theme = createTheme({
     palette: {
@@ -48,7 +49,7 @@ const theme = createTheme({
             contrastText: '#ffffff',
         },
         silver: {
-            main: '#b0b7c6',
+            main: '#9ca3b1',
             light: '#c7cbd3',
             dark: '##858d9e',
             contrastText: '#ffffff',
@@ -65,31 +66,72 @@ const boxStyle = {
     boxShadow: 24,
 };
 
-const companies = [
-    'Oliver Hansen',
-    'Van Henry',
-    'April Tucker',
-    'Ralph Hubbard',
-    'Omar Alexander',
-    'Carlos Abbott',
-    'Miriam Wagner',
-    'Bradley Wilkerson',
-    'Virginia Andrews',
-    'Kelly Snyder',
-];
+
+
+
+
+
+const apiUrl = "http://127.0.0.1:8000/api"
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
 const MenuProps = {
-  PaperProps: {
-    style: {
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-      width: 200,
+    PaperProps: {
+        style: {
+            maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+            width: 200,
+            textWrap: 'wrap'
+        },
     },
-  },
 };
 
+var companies = []
+var companiesList = []
+axios.get(apiUrl + '/companies').then(response => {
+    companiesList = response.data
+    let companiesTitles = response.data.map((el) => {
+        return el.title
+    })
+    companies = companiesTitles
+})
 
+var payments = []
+axios.get(apiUrl + '/payment_methods').then(response => {
+    let paymentsList = response.data.map((el) => {
+        return el.title
+    })
+    payments = paymentsList
+})
+
+// var projects = []
+// axios.get(apiUrl+'/projects').then(response => {
+//     let projectsList = response.data.map((el) => {
+//         return el.title
+//     })
+//     projects = projectsList
+// })
+
+var redactList = []
+await axios.get(apiUrl + "/paychecks", {
+    params: {
+    }
+})
+    .then((response) => {
+        const allPaychecks = response.data
+        allPaychecks.forEach(item => {
+            redactList[item.id] = {
+                company: false,
+                organization: false,
+                locality: false,
+                payment_method: false,
+                project: false,
+                sum: false,
+                pay_date: false,
+                comment: false,
+            }
+        })
+        console.log(redactList)
+    })
 
 
 
@@ -108,52 +150,108 @@ export default function PayChecks() {
         }
         return (buttonsLoadingStatus)
     }
-    const [sortType, setSortType] = React.useState(1);
+
     const [type, setType] = React.useState('');
     const [openImg, setOpenImg] = React.useState(false);
     const [paychecks, setPaychecks] = React.useState([]);
     const [archivalLoading, setArchivalLoading] = React.useState(Object.values(buttonsList().archive));
     const [approvedLoading, setApprovedLoading] = React.useState(Object.values(buttonsList().approved));
     const [deleteLoading, setDeleteLoading] = React.useState(Object.values(buttonsList().delete));
-    const [startDate, setStartDate] = React.useState();
-    const [endDate, setEndDate] = React.useState();
+    const [startDate, setStartDate] = React.useState('');
+    const [endDate, setEndDate] = React.useState('');
     const [loadExcelButton, setLoadExcelButton] = React.useState(false)
     const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
     const [activeImg, setActiveImg] = React.useState(0)
     const [paycheckModal, setPaycheckModal] = React.useState()
+
+    //Фильтры
+    const [userName, setUserName] = React.useState('')
     const [companyName, setCompanyName] = React.useState([]);
+    const [sellerName, setSellerName] = React.useState('')
+    const [localityName, setLocalityName] = React.useState('')
+    const [paymentsName, setPaymentsName] = React.useState([]);
+    const [projectsName, setProjectsName] = React.useState([]);
+    const [minAmount, setMinAmount] = React.useState('');
+    const [maxAmount, setMaxAmount] = React.useState('');
+    const [startPaymentDate, setStartPaymentDate] = React.useState('');
+    const [endPaymentDate, setEndPaymentDate] = React.useState('');
     const [loadSetFilters, setLoadSetFilters] = React.useState(false)
     const [loadRemoveFilters, setLoadRemoveFilters] = React.useState(false)
+    const [allFilters, setAllFilters] = React.useState({
+        username: null,
+        company: [],
+        organization: null,
+        locality: null,
+        payment_method: [],
+        project: [],
+        min_sum: null,
+        max_sum: null,
+        min_pay_date: null,
+        max_pay_date: null,
+        checked: null,
+        archive: false
+    })
+    const [companiesIds, setCompaniesIds] = React.useState([])
+    const [projects, setProjects] = React.useState([])
+    React.useEffect(() => {
+        axios.get(apiUrl + '/projects', {
+            params: {
+                company_id: companiesIds
+            }
+        }).then(response => {
+            let projectsList = response.data.map((el) => {
+                return el.title
+            })
+            setProjects(projectsList)
+        })
+    }, [companiesIds])
+
+    //Редактирование полей
+    const [redactCompany, setRedactCompany] = React.useState()
+    const [newCompany, setNewCompany] = React.useState('')
+    const [isRedact, setIsRedact] = React.useState(redactList)
+
+    const startRedact = (paycheckId, field) => {
+        console.log(companiesList)
+        let newIsRedact = isRedact
+        newIsRedact[paycheckId][field] = true
+        setIsRedact(newIsRedact)
+        loadPaychecks()
+        console.log(newIsRedact)
+    }
+
+
+
+    //Сортировка
+    const [sort, setSort] = React.useState([['date', 'desc']]);
+    const [checkedState, setCheckedState] = React.useState({
+        date: true,
+        project: false,
+        locality: false,
+        pay_date: false,
+        company: false,
+    });
+
     const stepperTheme = useTheme()
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
-    const apiUrl = "http://127.0.0.1:8000/api"
+
     const loadPaychecks = async () => {
-        let status = null;
-        if (type) {
-            if (type === 1)
-                status = true
-            else if (type === 2)
-                status = false
-        }
         try {
             setLoadPaycheksList(true)
             await axios.get(apiUrl + "/paychecks", {
                 params: {
-                    date: sortType === 1 ? "desc" : null,
-                    sum: sortType === 2 ? true : null,
-                    min_date: startDate ? startDate.split("-").reverse().join(".") : null,
-                    max_date: endDate ? endDate.split("-").reverse().join(".") : null,
-                    checked: status,
-                    archive: type === 3 ? true : false
+                    sort: sort,
+                    ...allFilters
                 }
             })
                 .then((response) => {
                     const allPaychecks = response.data
-                    setPaychecks(allPaychecks)
+                    
                     setTimeout(() => {
+                        setPaychecks(allPaychecks)
                         setLoadPaycheksList(false)
-                    }, 1000);
+                    }, 3000);
 
                 })
         } catch (err) {
@@ -163,7 +261,9 @@ export default function PayChecks() {
     }
     React.useEffect(() => {
         loadPaychecks()
-    }, [sortType, type, startDate, endDate])
+    }, [sort, allFilters, isRedact])
+
+
 
 
 
@@ -181,9 +281,6 @@ export default function PayChecks() {
         setActiveImg(0)
     }
 
-    const handleChange = (event) => {
-        setSortType(event.target.value);
-    };
 
     const typeChange = (event) => {
         setType(event.target.value)
@@ -250,9 +347,7 @@ export default function PayChecks() {
                 document.removeEventListener('keydown', handleKeyDown);
             };
         }
-
     }, [activeImg, paycheckModal])
-
 
 
 
@@ -362,29 +457,138 @@ export default function PayChecks() {
         }
     }
 
+    //Фильтры
+    const usernameFilterChange = (event) => {
+        setUserName(event.target.value)
+    }
+
+    React.useEffect(() => {
+        let ids = companiesList.filter(item => companyName.includes(item.title))
+            .map(item => item.id);
+        setCompaniesIds(ids)
+    }, [companyName])
+
     const companyFilterChange = (event) => {
         let value = event.target.value
         setCompanyName(typeof value === 'string' ? value.split(',') : value)
-        console.log(companyName)
+    };
+
+    const paymentsFilterChange = (event) => {
+        let value = event.target.value
+        setPaymentsName(typeof value === 'string' ? value.split(',') : value)
+    };
+
+    const projectsFilterChange = (event) => {
+        let value = event.target.value
+        setProjectsName(typeof value === 'string' ? value.split(',') : value)
     };
 
     const sellerFilterChange = (event) => {
-        console.log(event.target.value)
+        setSellerName(event.target.value)
+    }
+
+    const localityFilterChange = (event) => {
+        setLocalityName(event.target.value)
     }
 
     const setFilters = () => {
         setLoadSetFilters(true)
-        loadPaychecks()
+        let status = null;
+        if (type) {
+            if (type === 1)
+                status = true
+            else if (type === 2)
+                status = false
+        }
+        let filters = {
+            username: userName && userName !== '' ? userName : null,
+            company: Array.isArray(companyName) && companyName.length > 0 ? companyName : null,
+            organization: sellerName && sellerName !== '' ? sellerName : null,
+            locality: localityName && localityName !== '' ? localityName : null,
+            payment_method: Array.isArray(paymentsName) && paymentsName.length > 0 ? paymentsName : null,
+            project: Array.isArray(projectsName) && projectsName.length > 0 ? projectsName : null,
+            min_sum: minAmount && minAmount !== '' ? minAmount : null,
+            max_sum: maxAmount && maxAmount !== '' ? maxAmount : null,
+            min_pay_date: startPaymentDate && startPaymentDate !== '' ? startPaymentDate : null,
+            max_pay_date: endPaymentDate && endPaymentDate !== '' ? endPaymentDate : null,
+            checked: status,
+            archive: type === 3
+        }
+        console.log(filters)
+        setAllFilters(filters)
         setLoadSetFilters(false)
     }
 
     const removeFilters = () => {
         setLoadRemoveFilters(true)
-        loadPaychecks()
+        let filters = {
+            username: null,
+            company: [],
+            organization: null,
+            locality: null,
+            payment_method: [],
+            project: [],
+            min_sum: null,
+            max_sum: null,
+            min_pay_date: null,
+            max_pay_date: null,
+            checked: null,
+            archive: false
+        }
+        setAllFilters(filters)
+        setUserName('')
+        setCompanyName([])
+        setSellerName('')
+        setLocalityName('')
+        setPaymentsName([])
+        setProjectsName([])
+        setMinAmount('')
+        setMaxAmount('')
+        setStartPaymentDate('')
+        setEndPaymentDate('')
+        setType(0)
         setLoadRemoveFilters(false)
     }
 
+    React.useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById('FiltersBtn').click();
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [])
+    //Фильтры
 
+    const handleChecked = (field, type) => (e) => {
+        let isChecked = e.target.checked
+        setCheckedState({ ...checkedState, [field]: isChecked })
+        if (isChecked) {
+            setSort([...sort, [field, type]])
+        } else {
+            setSort(sort.filter(item => item[0] !== field))
+        }
+    }
+
+    const resetCheckboxes = () => {
+        setSort([['date', 'desc']])
+        setCheckedState({
+            date: true,
+            project: false,
+            locality: false,
+            pay_date: false,
+            company: false
+        });
+    };
+
+    const handleNewCompany = (e) => {
+        let value = e.target.value
+        setNewCompany(value)
+    }
     return (
         <div>
             <div className="h-full w-full flex  flex-col justify-center items-center p-10">
@@ -408,8 +612,24 @@ export default function PayChecks() {
                                         </div>
 
                                         <div className='ml-4 text-grafit text-lg w-full flex-wrap text-left flex flex-col justify-center h-full'>
-                                            <div className='mb-2'>Имя: {payCheck.username}</div>
-                                            <div className='mb-2'>Компания: {payCheck.company}</div>
+                                            <div className=''>Имя: {payCheck.username}</div>
+                                            {isRedact[payCheck.id]['company'] ?
+                                                <div className='flex'>
+                                                    <TextField variant="outlined" size="small" placeholder='Компания' value={newCompany} onChange={handleNewCompany} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                    <IconButton sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                        <Done fontSize='small' />
+                                                    </IconButton>
+                                                    <IconButton sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                        <Close fontSize='small' />
+                                                    </IconButton>
+                                                </div>
+                                                :
+                                                <div className=''>Компания: {payCheck.company}
+                                                    <IconButton onClick={() => startRedact(payCheck.id, 'company')} sx={{ marginBottom: 1, cursor: "pointer" }} >
+                                                        <Edit fontSize='small' />
+                                                    </IconButton>
+                                                </div>
+                                            }
                                             <div className='mb-2'>Компания-продавец: {payCheck.organization}</div>
                                             <div className='mb-2'>Населенный пункт: {payCheck.locality}</div>
                                             <div className='mb-2'>Способ оплаты: {payCheck.payment_method}</div>
@@ -526,42 +746,124 @@ export default function PayChecks() {
                             <div>
                                 <div className='text-lg font-bold mb-2'>Сортировка</div>
                                 <FormGroup>
-                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Дата создания" />
-                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Проект" />
-                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Город" />
-                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Дата оплаты" />
-                                    <FormControlLabel control={<Checkbox defaultValue={0} />} label="Компания" />
+                                    <FormControlLabel onChange={handleChecked('date', 'desc')} control={<Checkbox checked={checkedState.date} />} label="Дата создания" />
+                                    <FormControlLabel onChange={handleChecked('project', 'asc')} control={<Checkbox checked={checkedState.project} />} label="Проект" />
+                                    <FormControlLabel onChange={handleChecked('locality', 'asc')} control={<Checkbox checked={checkedState.locality} />} label="Город" />
+                                    <FormControlLabel onChange={handleChecked('pay_date', 'desc')} control={<Checkbox checked={checkedState.pay_date} />} label="Дата оплаты" />
+                                    <FormControlLabel onChange={handleChecked('company', 'asc')} control={<Checkbox checked={checkedState.company} />} label="Компания" />
                                 </FormGroup>
                             </div>
+                            <ThemeProvider theme={theme}>
+                                <LoadingButton sx={{
+                                    marginBottom: 2,
+                                    marginTop: 2,
+                                    textTransform: "none",
+                                    width: "max"
+                                }} variant="contained" color='grafit' onClick={() => resetCheckboxes()}>Сбросить</LoadingButton>
+                            </ThemeProvider>
                         </div>
                         <div className='bg-white h-max ml-4 mt-6 rounded-xl shadow-md shadow-white p-4'>
                             <div>
                                 <div className='text-lg font-bold mb-2'>Фильтры</div>
-                                {/* <div className='text-md mb-1'>Сортировка:</div>
-                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
-                                    <InputLabel id="select-sort-label"></InputLabel>
+
+                                <div className='text-md mb-1 mt-3'>Пользователь:</div>
+                                <TextField variant="outlined" size="small" value={userName} onChange={usernameFilterChange} className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg' />
+
+                                <div className='text-md mb-1 mt-3'>Компания:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg'>
+                                    <InputLabel></InputLabel>
                                     <Select
-                                        labelId="select-sort-label"
-                                        id="select-sort"
-                                        value={sortType ? sortType : 1}
-                                        label=""
-                                        onChange={handleChange}
+                                        multiple
+                                        value={companyName}
+                                        onChange={companyFilterChange}
+                                        input={<OutlinedInput label="Tag" />}
+                                        renderValue={(selected) => selected.join(', ')}
+                                        MenuProps={MenuProps}
                                         className='rounded-lg border-white'
                                     >
-                                        <MenuItem value={1}>Дата создания</MenuItem>
-                                        <MenuItem value={2}>Сумма</MenuItem>
+                                        {companies.map((name) => (
+                                            <MenuItem key={name} sx={{ textWrap: 'wrap' }} value={name}>
+                                                <Checkbox checked={companyName.indexOf(name) > -1} />
+                                                <ListItemText primary={name} />
+                                            </MenuItem>
+                                        ))}
                                     </Select>
-                                </FormControl> */}
-                                <div className='text-md mb-1 mt-3'>Дата создания:</div>
+                                </FormControl>
+
+                                <div className='text-md mb-1 mt-3'>Продавец:</div>
+                                <TextField variant="outlined" size="small" value={sellerName} onChange={sellerFilterChange} className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg' />
+
+                                <div className='text-md mb-1 mt-3'>Населенный пункт:</div>
+                                <TextField variant="outlined" size="small" value={localityName} onChange={localityFilterChange} className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg' />
+
+                                <div className='text-md mb-1 mt-3'>Способ оплаты:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg'>
+                                    <InputLabel></InputLabel>
+                                    <Select
+                                        multiple
+                                        value={paymentsName}
+                                        onChange={paymentsFilterChange}
+                                        input={<OutlinedInput label="Tag" />}
+                                        renderValue={(selected) => selected.join(', ')}
+                                        MenuProps={MenuProps}
+                                        className='rounded-lg border-white'
+                                    >
+                                        {payments.map((name) => (
+                                            <MenuItem key={name} sx={{ textWrap: 'wrap' }} value={name}>
+                                                <Checkbox checked={paymentsName.indexOf(name) > -1} />
+                                                <ListItemText primary={name} />
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
+                                <div className='text-md mb-1 mt-3'>Проект:</div>
+                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg'>
+                                    <InputLabel></InputLabel>
+                                    <Select
+                                        multiple
+                                        value={projectsName}
+                                        onChange={projectsFilterChange}
+                                        input={<OutlinedInput label="Tag" />}
+                                        renderValue={(selected) => selected.join(', ')}
+                                        MenuProps={MenuProps}
+                                        className='rounded-lg border-white'
+                                    >
+                                        {projects.length > 0 ? projects.map((name) => (
+                                            <MenuItem key={name} sx={{ textWrap: 'wrap' }} value={name}>
+                                                <Checkbox checked={projectsName.indexOf(name) > -1} />
+                                                <ListItemText primary={name} />
+                                            </MenuItem>
+                                        )) :
+                                            <MenuItem>
+                                                <ListItemText primary={"Проектов нет"} />
+                                            </MenuItem>
+                                        }
+                                    </Select>
+                                </FormControl>
+
+                                <div className='text-md mb-1 mt-3'>Сумма:</div>
+                                <div className='flex flex-col w-max justify-center 2xl:max-w-80 items-center 2xl:flex-row'>
+                                    <div className='w-48'>
+                                        <TextField id="outlined-basic" value={minAmount} defaultValue={minAmount} onChange={(e) => setMinAmount(e.target.value)} size='small' label="" placeholder='От' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                    <div className='text-xl text-black w-full text-center 2xl:w-auto 2xl:text-left 2xl:ml-3'> - </div>
+                                    <div className='2xl:ml-3 w-48'>
+                                        <TextField id="outlined-basic" value={maxAmount} defaultValue={maxAmount} size='small' onChange={(e) => setMaxAmount(e.target.value)} label="" placeholder='До' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                </div>
+
+                                <div className='text-md mb-1 mt-3'>Дата оплаты:</div>
                                 <div className='flex flex-col w-max justify-center items-center 2xl:flex-row'>
                                     <div className=''>
-                                        <TextField id="outlined-basic" type='date' onChange={(e) => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                        <TextField id="outlined-basic" type='date' value={startPaymentDate} onChange={(e) => setStartPaymentDate(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
                                     </div>
                                     <div className='text-xl text-black w-full text-center 2xl:w-auto 2xl:text-left 2xl:ml-3'> - </div>
                                     <div className='2xl:ml-3'>
-                                        <TextField id="outlined-basic" size='small' onChange={(e) => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                        <TextField id="outlined-basic" size='small' value={endPaymentDate} onChange={(e) => setEndPaymentDate(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
                                     </div>
                                 </div>
+
                                 <div className='text-md mb-1 mt-3'>Статус:</div>
                                 <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-auto shadow-md rounded-lg'>
                                     <InputLabel></InputLabel>
@@ -579,29 +881,16 @@ export default function PayChecks() {
                                     </Select>
                                 </FormControl>
 
-                                <div className='text-md mb-1 mt-3'>Компания:</div>
-                                <FormControl sx={{ minWidth: 180 }} size="small" className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg'>
-                                    <InputLabel></InputLabel>
-                                    <Select
-                                        multiple
-                                        value={companyName}
-                                        onChange={companyFilterChange}
-                                        input={<OutlinedInput label="Tag" />}
-                                        renderValue={(selected) => selected.join(', ')}
-                                        MenuProps={MenuProps}
-                                        className='rounded-lg border-white'
-                                    >
-                                        {companies.map((name) => (
-                                            <MenuItem key={name} value={name}>
-                                                <Checkbox checked={companyName.indexOf(name) > -1} />
-                                                <ListItemText primary={name} />
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-
-                                <div className='text-md mb-1 mt-3'>Продавец:</div>
-                                <TextField  variant="outlined" size="small" onChange={sellerFilterChange} className='bg-white w-3/4 2xl:w-3/4 shadow-md rounded-lg' />
+                                <div className='text-md mb-1 mt-3'>Дата создания:</div>
+                                <div className='flex flex-col w-max justify-center items-center 2xl:flex-row'>
+                                    <div className=''>
+                                        <TextField id="outlined-basic" type='date' value={startDate} onChange={(e) => startDateChange(e.target.value)} size='small' label="" placeholder='Начальная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                    <div className='text-xl text-black w-full text-center 2xl:w-auto 2xl:text-left 2xl:ml-3'> - </div>
+                                    <div className='2xl:ml-3'>
+                                        <TextField id="outlined-basic" size='small' value={endDate} onChange={(e) => endDateChange(e.target.value)} type='date' label="" placeholder='Конечная дата' variant="outlined" className='rounded-lg bg-white shadow-md' />
+                                    </div>
+                                </div>
                             </div>
                             <div className='mt-6 flex-col flex w-max'>
                                 <ThemeProvider theme={theme}>
@@ -609,7 +898,7 @@ export default function PayChecks() {
                                         marginBottom: 2,
                                         textTransform: "none",
                                         width: "max"
-                                    }} variant="contained" loading={loadSetFilters} color='silver' onClick={() => setFilters()}>Применить</LoadingButton>
+                                    }} variant="contained" id='FiltersBtn' loading={loadSetFilters} color='silver' onClick={() => setFilters()}>Применить</LoadingButton>
                                     <LoadingButton sx={{
                                         marginBottom: 2,
                                         textTransform: "none",
@@ -619,7 +908,7 @@ export default function PayChecks() {
                             </div>
                             <div className='mt-6'>
                                 <ThemeProvider theme={theme}>
-                                    <LoadingButton variant="contained" sx={{textTransform: "none"}} loading={loadExcelButton} color='apple' onClick={() => createTable()} startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</LoadingButton>
+                                    <LoadingButton variant="contained" sx={{ textTransform: "none" }} loading={loadExcelButton} color='apple' onClick={() => createTable()} startIcon={<SvgIcon component={ExcelIcon} inheritViewBox />}>Сформировать таблицу</LoadingButton>
                                 </ThemeProvider>
                             </div>
                         </div>
