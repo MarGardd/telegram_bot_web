@@ -4,6 +4,7 @@ import PayChecks from "../pages/paychecks";
 import Companies from "../pages/companies";
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
+import PaymentIcon from '@mui/icons-material/Payment';
 
 const Sidebar = ({children, active}) => {
     const menuItem = [
@@ -16,6 +17,11 @@ const Sidebar = ({children, active}) => {
             path: "/companies",
             name: "Компании",
             icon:<LocationCityIcon />
+        },
+        {
+            path: "/payment-methods",
+            name: "Методы оплаты",
+            icon:<PaymentIcon />
         }
     ]
     return (
