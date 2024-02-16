@@ -5,6 +5,7 @@ import Companies from "../pages/companies";
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import PaymentIcon from '@mui/icons-material/Payment';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 
 const Sidebar = ({children, active}) => {
     const menuItem = [
@@ -22,6 +23,11 @@ const Sidebar = ({children, active}) => {
             path: "/payment-methods",
             name: "Методы оплаты",
             icon:<PaymentIcon />
+        },
+        {
+            path: "/users",
+            name: "Пользователи",
+            icon:<GroupAddIcon />
         }
     ]
     return (
