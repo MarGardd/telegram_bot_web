@@ -6,9 +6,11 @@ import { LoadingButton } from "@mui/lab";
 import { createTheme } from "@mui/material/styles";
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
-import LocationCityIcon from '@mui/icons-material/LocationCity';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import Button from '@mui/material/Button';
 import axios from "axios";
+import Snackbar from '@mui/material/Snackbar';
+import { Alert } from "@mui/material";
 
 const theme = createTheme({
     palette: {
@@ -51,76 +53,111 @@ const boxStyle = {
     p: 4,
 };
 
+
 export default function Users() {
     const apiUrl = "http://127.0.0.1:8000/api"
-    // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
-
-    const [payMethods, setPayMethods] = React.useState([])
-    const [loadPayMethods, setLoadPayMethods] = React.useState(false)
+    const [users, setUsers] = React.useState([])
+    const [loadUsers, setLoadUsers] = React.useState(false)
     const [openModal, setOpenModal] = React.useState(false)
-    const [newMethodName, setNewMethodName] = React.useState("")
+    const [newEmail, setNewEmail] = React.useState("")
+    const [newPassword, setNewPassword] = React.useState("")
+    const [newUsername, setNewUsername] = React.useState("")
     const [loadingSaveMethod, setLoadingSaveMethod] = React.useState(false)
-
-
-    const getPayMethods = async () => {
-        setLoadPayMethods(true)
-        await axios.get(apiUrl + "/payment_methods").then((response) => {
-            const allPayMethods = response.data
-            setPayMethods(allPayMethods)
-        }).then(setLoadPayMethods(false))
+    const [errorNotify, setErrorNotify] = React.useState(false)
+    const [errorMessage, setErrorMessage] = React.useState("")
+    const closeError = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setErrorNotify(false)
+        setTimeout(() => {
+            setErrorMessage("")
+        }, 500);
     }
+
+    const getUsers = async () => {
+        setLoadUsers(true)
+        await axios.get(apiUrl + "/users").then((response) => {
+            const allUsers = response.data
+            setUsers(allUsers)
+        })
+        setLoadUsers(false)
+    }
+    
     React.useEffect(() => {
-        getPayMethods()
+        getUsers()
     }, [loadingSaveMethod])
 
-    const deletePayMethod = async (id) => {
+    const deleteUser = async (id) => {
         try {
-            await axios.delete(apiUrl + "/payment_methods/" + id).then((response) => {
-                const newPayMethods = payMethods.filter(item => {
+            await axios.delete(apiUrl + "/admin/" + id).then((response) => {
+                const newUsers = users.filter(item => {
                     if (item.id !== id) {
                         return (item)
                     }
                 })
-                setPayMethods(newPayMethods)
+                setUsers(newUsers)
             })
         } catch (err) {
+            setErrorMessage("Ошибка: " + err.message)
+            setErrorNotify(true)
             console.log(err)
         }
     }
 
-    const handleInputChange = (e) => {
+    const handleNameChange = (e) => {
         let value = e.target.value
-        setNewMethodName(value)
+        setNewUsername(value)
     }
 
-    const addMethod = async () => {
+    const handleEmailChange = (e) => {
+        let value = e.target.value
+        setNewEmail(value)
+    }
+
+    const handlePasswordChange = (e) => {
+        let value = e.target.value
+        setNewPassword(value)
+    }
+
+    const addUser = async () => {
         try {
             setLoadingSaveMethod(true)
-            await axios.post(apiUrl + "/payment_methods", {
-                title: newMethodName
+            await axios.post(apiUrl + "/users", {
+                name: newUsername,
+                email: newEmail,
+                password: newPassword
+            }, {
+                headers: {Authorization: `Bearer 4|ShPmoVDqqSpN7v0ENk9h3xLkqFZP6fT5GWEO3AOkca5dcf62`}
             }).then(() => {
                 setOpenModal(false)
                 setLoadingSaveMethod(false)
-                setNewMethodName("")
+                setNewEmail("")
+                setNewPassword("")
+                setNewUsername("")
             })
         } catch (e) {
             setLoadingSaveMethod(false)
+            setErrorMessage("Ошибка: " + e.message)
+            setErrorNotify(true)
             console.log(e)
         }
     }
 
-    const setCompanyQuestion = async (id) => {
-        try{
-            await axios.post(apiUrl+'/payment_methods/question/'+id).then(() => {
-                let newPayMethods = payMethods.map(item => {
-                    if(item.id === id){
-                        item.has_companies = !item.has_companies
+    const setAdmin = async (id) => {
+        try {
+            await axios.post(apiUrl + '/admin/' + id).then(() => {
+                let newUsers = users.map(item => {
+                    if (item.id === id) {
+                        item.is_admin = !item.is_admin
                     }
                     return item
                 })
-                setPayMethods(newPayMethods)
+                setUsers(newUsers)
             })
-        } catch (err){
+        } catch (err) {
+            setErrorMessage("Ошибка: " + err.message)
+            setErrorNotify(true)
             console.log(err)
         }
     }
@@ -135,32 +172,32 @@ export default function Users() {
                         <Sidebar active={3} />
                     </div>
                     <div className=" w-3/5 flex flex-col items-center">
-                        {!payMethods || payMethods.length === 0 ? (
+                        {!users || users.length === 0 ? (
                             <div className="w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5">
-                                {loadPayMethods ? <CircularProgress /> : "Методов оплаты нет"}
+                                {loadUsers ? <CircularProgress /> : "Пользователей нет"}
                             </div>
                         ) : (
                             <div
                                 className="w-full mt-6 flex bg-white shadow-md shadow-white rounded-xl items-center p-5"
                             >
                                 <div className="ml-4 text-grafit text-lg w-full text-left flex flex-col justify-center h-full">
-                                    <div className="font-bold text-xl mb-3">Методы оплаты</div>
-                                    {payMethods.map((element, i) => {
+                                    <div className="font-bold text-xl mb-3">Пользователи</div>
+                                    {users.map((element, i) => {
                                         return (
                                             <div key={i} className="flex">
-                                                <div className="mb-1">
-                                                    {element.title}
+                                                <div className="mb-2">
+                                                    {element.name+" ("+element.email+")"}
                                                 </div>
                                                 <div className="ml-2 ">
-                                                    <Tooltip title="Спрашивать компанию">
-                                                        <IconButton onClick={() => setCompanyQuestion(element.id)} size="small">
-                                                            <LocationCityIcon color={element.has_companies ? "success" : "inherit"} fontSize="inherit" />
+                                                    <Tooltip title="Установить/убрать права админа">
+                                                        <IconButton onClick={() => setAdmin(element.id)} size="small">
+                                                            <AdminPanelSettingsIcon color={element.is_admin ? "success" : "inherit"} fontSize="inherit" />
                                                         </IconButton>
                                                     </Tooltip>
                                                 </div>
                                                 <div className="ml-1 ">
-                                                    <Tooltip title="Удалить">
-                                                        <IconButton size="small" onClick={() => deletePayMethod(element.id)} aria-label="delete">
+                                                    <Tooltip title="Удалить пользователя">
+                                                        <IconButton size="small" onClick={() => deleteUser(element.id)} aria-label="delete">
                                                             <CloseIcon fontSize="inherit" />
                                                         </IconButton>
                                                     </Tooltip>
@@ -170,68 +207,103 @@ export default function Users() {
 
                                         );
                                     })}
-                                    <div className="flex justify-between mt-4">
-                                        <ThemeProvider theme={theme}>
-                                            <div className="flex">
-                                                <Box>
-                                                    <LoadingButton
-                                                        variant="outlined"
-                                                        onClick={() => { setOpenModal(true); }}
-                                                        color="grafit"
-                                                    >
-                                                        Добавить метод оплаты
-                                                    </LoadingButton>
-                                                </Box>
-                                                <Modal
-                                                    open={openModal}
-                                                    onClose={() => {
-                                                        setOpenModal(false)
-                                                        setNewMethodName("")
-                                                    }}
-                                                    className="rounded-xl"
-                                                >
-                                                    <Box
-                                                        sx={boxStyle}
-                                                        className="bg-white rounded-xl"
-                                                    >
-                                                        <div>
-                                                            <div className="text-2xl font-bold mb-5">
-                                                                Добавление метода оплаты
-                                                            </div>
-                                                            <div className="text-lg mb-2">
-                                                                Введите метод оплаты:
-                                                            </div>
-                                                            <TextField
-                                                                value={newMethodName}
-                                                                onChange={handleInputChange}
-                                                                className=" w-full"
-                                                                size="small"
-                                                                variant="outlined"
-                                                            ></TextField>
-                                                        </div>
-                                                        <div className="mt-3">
-                                                            <LoadingButton
-                                                                variant="outlined"
-                                                                onClick={() => addMethod()}
-                                                                color="apple"
-                                                                loading={loadingSaveMethod}
-                                                            >
-                                                                Сохранить
-                                                            </LoadingButton>
-                                                        </div>
-                                                    </Box>
-                                                </Modal>
-                                            </div>
-                                        </ThemeProvider>
-                                    </div>
+
                                 </div>
                             </div>
                         )}
-
+                        <div className="flex justify-between mt-4">
+                            <ThemeProvider theme={theme}>
+                                <div className="flex">
+                                    <Box>
+                                        <LoadingButton
+                                            variant="contained"
+                                            onClick={() => { setOpenModal(true); }}
+                                            color="apple"
+                                        >
+                                            Добавить пользователя
+                                        </LoadingButton>
+                                    </Box>
+                                    <Modal
+                                        open={openModal}
+                                        onClose={() => {
+                                            setOpenModal(false)
+                                            setNewEmail("")
+                                            setNewPassword("")
+                                            setNewUsername("")
+                                        }}
+                                        className="rounded-xl"
+                                    >
+                                        <Box
+                                            sx={boxStyle}
+                                            className="bg-white rounded-xl"
+                                        >
+                                            <div>
+                                                <div className="text-2xl font-bold mb-5">
+                                                    Добавление метода оплаты
+                                                </div>
+                                                <div className="text-lg mb-2">
+                                                    Имя пользователя:
+                                                </div>
+                                                <TextField
+                                                    value={newUsername}
+                                                    onChange={handleNameChange}
+                                                    className=" w-full"
+                                                    sx={{marginBottom: 2}}
+                                                    size="small"
+                                                    variant="outlined"
+                                                ></TextField>
+                                                <div className="text-lg mb-2">
+                                                    Email:
+                                                </div>
+                                                <TextField
+                                                    value={newEmail}
+                                                    onChange={handleEmailChange}
+                                                    className="w-full"
+                                                    sx={{marginBottom: 2}}
+                                                    size="small"
+                                                    variant="outlined"
+                                                ></TextField>
+                                                <div className="text-lg mb-2">
+                                                    Пароль:
+                                                </div>
+                                                <TextField
+                                                    value={newPassword}
+                                                    onChange={handlePasswordChange}
+                                                    className="w-full"
+                                                    sx={{marginBottom: 2}}
+                                                    size="small"
+                                                    variant="outlined"
+                                                ></TextField>
+                                            </div>
+                                            <div className="mt-3">
+                                                <LoadingButton
+                                                    variant="outlined"
+                                                    onClick={() => addUser()}
+                                                    color="apple"
+                                                    loading={loadingSaveMethod}
+                                                >
+                                                    Сохранить
+                                                </LoadingButton>
+                                            </div>
+                                        </Box>
+                                    </Modal>
+                                </div>
+                            </ThemeProvider>
+                        </div>
                     </div>
                     <div className="w-1/3 h-max ml-4 mt-6"></div>
                 </div>
             </div>
+            <Snackbar
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                open={errorNotify}
+                autoHideDuration={5000}
+                onClose={closeError}
+            >
+                <Alert variant='filled' onClose={closeError} severity='error'>
+                    {errorMessage}
+                </Alert>
+            </Snackbar>
         </div>
     );
 }

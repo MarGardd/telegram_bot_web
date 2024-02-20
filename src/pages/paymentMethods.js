@@ -9,6 +9,9 @@ import IconButton from '@mui/material/IconButton';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import Button from '@mui/material/Button';
 import axios from "axios";
+import Snackbar from '@mui/material/Snackbar';
+import { Alert } from "@mui/material";
+
 
 const theme = createTheme({
     palette: {
@@ -52,7 +55,6 @@ const boxStyle = {
 };
 
 export default function PayMethods() {
-    const apiUrl = "http://127.0.0.1:8000/api"
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
     const [payMethods, setPayMethods] = React.useState([])
@@ -60,14 +62,26 @@ export default function PayMethods() {
     const [openModal, setOpenModal] = React.useState(false)
     const [newMethodName, setNewMethodName] = React.useState("")
     const [loadingSaveMethod, setLoadingSaveMethod] = React.useState(false)
+    const [errorNotify, setErrorNotify] = React.useState(false)
+    const [errorMessage, setErrorMessage] = React.useState("")
+    const closeError = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setErrorNotify(false)
+        setTimeout(() => {
+            setErrorMessage("")
+        }, 500);
+    }
 
 
     const getPayMethods = async () => {
         setLoadPayMethods(true)
-        await axios.get(apiUrl + "/payment_methods").then((response) => {
+        await axios.get( "/payment_methods").then((response) => {
             const allPayMethods = response.data
             setPayMethods(allPayMethods)
-        }).then(setLoadPayMethods(false))
+        })
+        setLoadPayMethods(false)
     }
     React.useEffect(() => {
         getPayMethods()
@@ -75,7 +89,7 @@ export default function PayMethods() {
 
     const deletePayMethod = async (id) => {
         try {
-            await axios.delete(apiUrl + "/payment_methods/" + id).then((response) => {
+            await axios.delete( "/payment_methods/" + id).then((response) => {
                 const newPayMethods = payMethods.filter(item => {
                     if (item.id !== id) {
                         return (item)
@@ -84,6 +98,8 @@ export default function PayMethods() {
                 setPayMethods(newPayMethods)
             })
         } catch (err) {
+            setErrorMessage("Ошибка: " + err.message)
+            setErrorNotify(true)
             console.log(err)
         }
     }
@@ -96,7 +112,7 @@ export default function PayMethods() {
     const addMethod = async () => {
         try {
             setLoadingSaveMethod(true)
-            await axios.post(apiUrl + "/payment_methods", {
+            await axios.post( "/payment_methods", {
                 title: newMethodName
             }).then(() => {
                 setOpenModal(false)
@@ -105,13 +121,15 @@ export default function PayMethods() {
             })
         } catch (e) {
             setLoadingSaveMethod(false)
+            setErrorMessage("Ошибка: " + e.message)
+            setErrorNotify(true)
             console.log(e)
         }
     }
 
     const setCompanyQuestion = async (id) => {
         try{
-            await axios.post(apiUrl+'/payment_methods/question/'+id).then(() => {
+            await axios.post('/payment_methods/question/'+id).then(() => {
                 let newPayMethods = payMethods.map(item => {
                     if(item.id === id){
                         item.has_companies = !item.has_companies
@@ -121,6 +139,8 @@ export default function PayMethods() {
                 setPayMethods(newPayMethods)
             })
         } catch (err){
+            setErrorMessage("Ошибка: " + err.message)
+            setErrorNotify(true)
             console.log(err)
         }
     }
@@ -232,6 +252,16 @@ export default function PayMethods() {
                     <div className="w-1/3 h-max ml-4 mt-6"></div>
                 </div>
             </div>
+            <Snackbar
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                open={errorNotify}
+                autoHideDuration={5000}
+                onClose={closeError}
+            >
+                <Alert variant='filled' onClose={closeError} severity='error'>
+                    {errorMessage}
+                </Alert>
+            </Snackbar>
         </div>
     );
 }

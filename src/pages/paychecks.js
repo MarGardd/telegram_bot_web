@@ -7,7 +7,7 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import React, { useEffect } from 'react';
 import Input from '@mui/material/Input';
-import { CircularProgress, Grid, IconButton, SvgIcon, TextField } from '@mui/material';
+import { Alert, CircularProgress, Grid, IconButton, SvgIcon, TextField } from '@mui/material';
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
 import { ReactComponent as ExcelIcon } from '../storage/excel-logo.svg'
@@ -27,6 +27,7 @@ import Checkbox from '@mui/material/Checkbox';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import ListItemText from '@mui/material/ListItemText';
 import { BorderColorOutlined, Close, Done, Edit } from '@mui/icons-material';
+import Snackbar from '@mui/material/Snackbar';
 
 const theme = createTheme({
     palette: {
@@ -71,7 +72,7 @@ const boxStyle = {
 
 
 
-const apiUrl = "http://127.0.0.1:8000/api"
+axios.defaults.baseURL = "http://127.0.0.1:8000/api";
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -87,51 +88,59 @@ const MenuProps = {
 
 var companies = []
 var companiesList = []
-axios.get(apiUrl + '/companies').then(response => {
-    companiesList = response.data
-    let companiesTitles = response.data.map((el) => {
-        return el.title
-    })
-    companies = companiesTitles
-})
+
 
 var payments = []
-axios.get(apiUrl + '/payment_methods').then(response => {
-    let paymentsList = response.data.map((el) => {
-        return el.title
-    })
-    payments = paymentsList
-})
 
-// var projects = []
-// axios.get(apiUrl+'/projects').then(response => {
-//     let projectsList = response.data.map((el) => {
-//         return el.title
-//     })
-//     projects = projectsList
-// })
 
 var redactList = []
-await axios.get(apiUrl + "/paychecks", {
-    params: {
-    }
-})
-    .then((response) => {
-        const allPaychecks = response.data
-        allPaychecks.forEach(item => {
-            redactList[item.id] = {
-                company: false,
-                organization: false,
-                locality: false,
-                payment_method: false,
-                project: false,
-                sum: false,
-                pay_date: false,
-                comment: false,
-            }
-        })
-        console.log(redactList)
+const token = localStorage.getItem('vostorg-token')
+if (token) {
+    await axios.get("/paychecks", {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
     })
+        .then((response) => {
+            const allPaychecks = response.data
+            allPaychecks.forEach(item => {
+                redactList[item.id] = {
+                    company: false,
+                    organization: false,
+                    locality: false,
+                    payment_method: false,
+                    project: false,
+                    sum: false,
+                    pay_date: false,
+                    comment: false,
+                }
+            })
+        })
+
+    axios.get('/companies', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    }).then(response => {
+        companiesList = response.data
+        let companiesTitles = response.data.map((el) => {
+            return el.title
+        })
+        companies = companiesTitles
+    })
+
+    axios.get('/payment_methods', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    }).then(response => {
+        let paymentsList = response.data.map((el) => {
+            return el.title
+        })
+        payments = paymentsList
+    })
+}
+
 
 
 
@@ -163,6 +172,18 @@ export default function PayChecks() {
     const [loadPaycheksList, setLoadPaycheksList] = React.useState(false)
     const [activeImg, setActiveImg] = React.useState(0)
     const [paycheckModal, setPaycheckModal] = React.useState()
+    const [isInitialize, setIsInitialize] = React.useState(false)
+    const [errorNotify, setErrorNotify] = React.useState(false)
+    const [errorMessage, setErrorMessage] = React.useState("")
+    const closeError = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setErrorNotify(false)
+        setTimeout(() => {
+            setErrorMessage("")
+        }, 500);
+    }
 
     //Фильтры
     const [userName, setUserName] = React.useState('')
@@ -194,7 +215,7 @@ export default function PayChecks() {
     const [companiesIds, setCompaniesIds] = React.useState([])
     const [projects, setProjects] = React.useState([])
     React.useEffect(() => {
-        axios.get(apiUrl + '/projects', {
+        axios.get('/projects', {
             params: {
                 company_id: companiesIds
             }
@@ -213,22 +234,21 @@ export default function PayChecks() {
         let newIsRedact = isRedact
         newIsRedact[id][field] = status
         setIsRedact(newIsRedact)
-        console.log(field)
         if (field === 'company') {
             setRedactCompany(status)
-        } else if (field === 'organization'){
+        } else if (field === 'organization') {
             setRedactOrganization(status)
-        } else if (field === 'locality'){
+        } else if (field === 'locality') {
             setRedactLocality(status)
-        } else if (field === 'payment_method'){
+        } else if (field === 'payment_method') {
             setRedactPaymentMethod(status)
-        } else if (field === 'project'){
+        } else if (field === 'project') {
             setRedactProject(status)
-        } else if (field === 'sum'){
+        } else if (field === 'sum') {
             setRedactSum(status)
-        } else if (field === 'pay_date'){
+        } else if (field === 'pay_date') {
             setRedactPayDate(status)
-        } else if (field === 'comment'){
+        } else if (field === 'comment') {
             setRedactComment(status)
         }
 
@@ -236,299 +256,323 @@ export default function PayChecks() {
 
     const [isRedact, setIsRedact] = React.useState(redactList)
     const startRedact = (paycheckId, field) => {
-        if (field === "company"){
+        if (field === "company") {
             setRedactCompany(true)
-        } else if (field === "organization"){
+        } else if (field === "organization") {
             setRedactOrganization(true)
-        } else if (field === "locality"){
+        } else if (field === "locality") {
             setRedactLocality(true)
-        } else if (field === "payment_method"){
+        } else if (field === "payment_method") {
             setRedactPaymentMethod(true)
-        } else if (field === "project"){
+        } else if (field === "project") {
             setRedactProject(true)
-        } else if (field === "sum"){
+        } else if (field === "sum") {
             setRedactSum(true)
-        } else if (field === "pay_date"){
+        } else if (field === "pay_date") {
             setRedactPayDate(true)
-        } else if (field === "comment"){
+        } else if (field === "comment") {
             setRedactComment(true)
         }
         changeIsRedact(paycheckId, field, true)
-        loadPaychecks()
+        loadPaychecks(false)
     }
-        //Компания
-        const [redactCompany, setRedactCompany] = React.useState(false)
-        const [newCompany, setNewCompany] = React.useState('')
-        const handleNewCompany = (e) => {
-            let value = e.target.value
-            setNewCompany(value)
-        }
-        const saveNewCompany = async (id) => {
-            try {
-                if(!newCompany || newCompany === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 1,
-                    answer_text: newCompany
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.company = newCompany
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-
-                    changeIsRedact(id, 'company', false)
-                    setRedactCompany(false)
-                    setNewCompany("")
-                })
-            } catch (err) {
-                console.log(err)
+    //Компания
+    const [redactCompany, setRedactCompany] = React.useState(false)
+    const [newCompany, setNewCompany] = React.useState('')
+    const handleNewCompany = (e) => {
+        let value = e.target.value
+        setNewCompany(value)
+    }
+    const saveNewCompany = async (id) => {
+        try {
+            if (!newCompany || newCompany === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Компания-продавец
-        const [redactOrganization, setRedactOrganization] = React.useState(false)
-        const [newOrganization, setNewOrganization] = React.useState('')
-
-        const handleNewOrganization = (e) => {
-            let value = e.target.value
-            setNewOrganization(value)
-        }
-        const saveNewOrganization = async (id) => {
-            try {
-                if(!newOrganization || newOrganization === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 2,
-                    answer_text: newOrganization
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.organization = newOrganization
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'organization', false)
-                    setRedactOrganization(false)
-                    setNewOrganization("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 1,
+                answer_text: newCompany
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.company = newCompany
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+
+                changeIsRedact(id, 'company', false)
+                setRedactCompany(false)
+                setNewCompany("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Компания-продавец
+    const [redactOrganization, setRedactOrganization] = React.useState(false)
+    const [newOrganization, setNewOrganization] = React.useState('')
+
+    const handleNewOrganization = (e) => {
+        let value = e.target.value
+        setNewOrganization(value)
+    }
+    const saveNewOrganization = async (id) => {
+        try {
+            if (!newOrganization || newOrganization === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Населенный пункт
-        const [redactLocality, setRedactLocality] = React.useState(false)
-        const [newLocality, setNewLocality] = React.useState('')
-
-        const handleNewLocality = (e) => {
-            let value = e.target.value
-            setNewLocality(value)
-        }
-        const saveNewLocality = async (id) => {
-            try {
-                if(!newLocality || newLocality === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 4,
-                    answer_text: newLocality
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.locality = newLocality
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'locality', false)
-                    setRedactLocality(false)
-                    setNewLocality("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 2,
+                answer_text: newOrganization
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.organization = newOrganization
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'organization', false)
+                setRedactOrganization(false)
+                setNewOrganization("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Населенный пункт
+    const [redactLocality, setRedactLocality] = React.useState(false)
+    const [newLocality, setNewLocality] = React.useState('')
+
+    const handleNewLocality = (e) => {
+        let value = e.target.value
+        setNewLocality(value)
+    }
+    const saveNewLocality = async (id) => {
+        try {
+            if (!newLocality || newLocality === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Способ оплаты
-        const [redactPaymentMethod, setRedactPaymentMethod] = React.useState(false)
-        const [newPaymentMethod, setNewPaymentMethod] = React.useState('')
-
-        const handleNewPaymentMethod = (e) => {
-            let value = e.target.value
-            setNewPaymentMethod(value)
-        }
-        const saveNewPaymentMethod = async (id) => {
-            try {
-                if(!newPaymentMethod || newPaymentMethod === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 5,
-                    answer_text: newPaymentMethod
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.payment_method = newPaymentMethod
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'payment_method', false)
-                    setRedactPaymentMethod(false)
-                    setNewPaymentMethod("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 4,
+                answer_text: newLocality
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.locality = newLocality
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'locality', false)
+                setRedactLocality(false)
+                setNewLocality("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Способ оплаты
+    const [redactPaymentMethod, setRedactPaymentMethod] = React.useState(false)
+    const [newPaymentMethod, setNewPaymentMethod] = React.useState('')
+
+    const handleNewPaymentMethod = (e) => {
+        let value = e.target.value
+        setNewPaymentMethod(value)
+    }
+    const saveNewPaymentMethod = async (id) => {
+        try {
+            if (!newPaymentMethod || newPaymentMethod === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Проект
-        const [redactProject, setRedactProject] = React.useState(false)
-        const [newProject, setNewProject] = React.useState('')
-
-        const handleNewProject = (e) => {
-            let value = e.target.value
-            setNewProject(value)
-        }
-        const saveNewProject = async (id) => {
-            try {
-                if(!newProject || newProject === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 3,
-                    answer_text: newProject
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.project = newProject
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'project', false)
-                    setRedactProject(false)
-                    setNewProject("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 5,
+                answer_text: newPaymentMethod
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.payment_method = newPaymentMethod
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'payment_method', false)
+                setRedactPaymentMethod(false)
+                setNewPaymentMethod("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Проект
+    const [redactProject, setRedactProject] = React.useState(false)
+    const [newProject, setNewProject] = React.useState('')
+
+    const handleNewProject = (e) => {
+        let value = e.target.value
+        setNewProject(value)
+    }
+    const saveNewProject = async (id) => {
+        try {
+            if (!newProject || newProject === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Сумма оплаты
-        const [redactSum, setRedactSum] = React.useState(false)
-        const [newSum, setNewSum] = React.useState('')
-
-        const handleNewSum = (e) => {
-            let value = e.target.value
-            setNewSum(value)
-        }
-        const saveNewSum = async (id) => {
-            try {
-                if(!newSum || newSum === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 6,
-                    answer_text: newSum
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.sum = newSum
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'sum', false)
-                    setRedactSum(false)
-                    setNewSum("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 3,
+                answer_text: newProject
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.project = newProject
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'project', false)
+                setRedactProject(false)
+                setNewProject("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Сумма оплаты
+    const [redactSum, setRedactSum] = React.useState(false)
+    const [newSum, setNewSum] = React.useState('')
+
+    const handleNewSum = (e) => {
+        let value = e.target.value
+        setNewSum(value)
+    }
+    const saveNewSum = async (id) => {
+        try {
+            if (!newSum || newSum === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Дата оплаты
-        const [redactPayDate, setRedactPayDate] = React.useState(false)
-        const [newPayDate, setNewPayDate] = React.useState('')
-
-        const handleNewPayDate = (e) => {
-            let value = e.target.value
-            setNewPayDate(value)
-        }
-        const saveNewPayDate = async (id) => {
-            try {
-                if(!newPayDate || newPayDate === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                const parts = newPayDate.split('-');
-                const outputDate = parts[2] + '.' + parts[1] + '.' + parts[0];
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 7,
-                    answer_text: outputDate
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.pay_date = outputDate
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'pay_date', false)
-                    setRedactPayDate(false)
-                    setNewPayDate("")
+            await axios.post("/paychecks/" + id, {
+                question_id: 6,
+                answer_text: newSum
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.sum = newSum
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'sum', false)
+                setRedactSum(false)
+                setNewSum("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
+
+    //Дата оплаты
+    const [redactPayDate, setRedactPayDate] = React.useState(false)
+    const [newPayDate, setNewPayDate] = React.useState('')
+
+    const handleNewPayDate = (e) => {
+        let value = e.target.value
+        setNewPayDate(value)
+    }
+    const saveNewPayDate = async (id) => {
+        try {
+            if (!newPayDate || newPayDate === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
             }
-        }
-
-        //Комментарий
-        const [redactComment, setRedactComment] = React.useState(false)
-        const [newComment, setNewComment] = React.useState('')
-
-        const handleNewComment = (e) => {
-            let value = e.target.value
-            setNewComment(value)
-        }
-        const saveNewComment = async (id) => {
-            try {
-                if(!newComment || newComment === ""){
-                    console.log("Ошибка. Редактируемое поле обязательно для заполнения")
-                    return
-                }
-                await axios.post(apiUrl + "/paychecks/" + id, {
-                    question_id: 9,
-                    answer_text: newComment
-                }).then((response) => {
-                    let newPaychecks = paychecks.map(item => {
-                        if (item.id === id) {
-                            item.comment = newComment
-                        }
-                        return item
-                    })
-                    setPaychecks(newPaychecks)
-                    changeIsRedact(id, 'comment', false)
-                    setRedactComment(false)
-                    setNewComment("")
+            const parts = newPayDate.split('-');
+            const outputDate = parts[2] + '.' + parts[1] + '.' + parts[0];
+            await axios.post("/paychecks/" + id, {
+                question_id: 7,
+                answer_text: outputDate
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.pay_date = outputDate
+                    }
+                    return item
                 })
-            } catch (err) {
-                console.log(err)
-            }
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'pay_date', false)
+                setRedactPayDate(false)
+                setNewPayDate("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
+    }
+
+    //Комментарий
+    const [redactComment, setRedactComment] = React.useState(false)
+    const [newComment, setNewComment] = React.useState('')
+
+    const handleNewComment = (e) => {
+        let value = e.target.value
+        setNewComment(value)
+    }
+    const saveNewComment = async (id) => {
+        try {
+            if (!newComment || newComment === "") {
+                setErrorMessage("Ошибка. Редактируемое поле обязательно для заполнения")
+                setErrorNotify(true)
+                return
+            }
+            await axios.post("/paychecks/" + id, {
+                question_id: 9,
+                answer_text: newComment
+            }).then((response) => {
+                let newPaychecks = paychecks.map(item => {
+                    if (item.id === id) {
+                        item.comment = newComment
+                    }
+                    return item
+                })
+                setPaychecks(newPaychecks)
+                changeIsRedact(id, 'comment', false)
+                setRedactComment(false)
+                setNewComment("")
+            })
+        } catch (err) {
+            console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
+        }
+    }
 
     //Редактирование полей (конец)
 
@@ -547,10 +591,12 @@ export default function PayChecks() {
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
 
-    const loadPaychecks = async () => {
+    const loadPaychecks = async (reload) => {
         try {
-            setLoadPaycheksList(true)
-            await axios.get(apiUrl + "/paychecks", {
+            if (reload) {
+                setLoadPaycheksList(true)
+            }
+            await axios.get("/paychecks", {
                 params: {
                     sort: sort,
                     ...allFilters
@@ -558,21 +604,28 @@ export default function PayChecks() {
             })
                 .then((response) => {
                     const allPaychecks = response.data
-
-                    setTimeout(() => {
-                        setPaychecks(allPaychecks)
-                        setLoadPaycheksList(false)
-                    }, 3000);
+                    // setTimeout(() => {
+                    setPaychecks(allPaychecks)
+                    setLoadPaycheksList(false)
+                    // }, 3000);
 
                 })
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
-
     }
     React.useEffect(() => {
-        loadPaychecks()
-    }, [sort, allFilters, isRedact])
+        loadPaychecks(true)
+    }, [sort, allFilters])
+    React.useEffect(() => {
+        if (isInitialize) {
+            loadPaychecks(false)
+        } else {
+            setIsInitialize(true)
+        }
+    }, [isRedact])
 
 
 
@@ -616,29 +669,33 @@ export default function PayChecks() {
             const selectedFile = event.target.files[0];
             const formData = new FormData();
             formData.set('file', selectedFile);
-            await axios.post(apiUrl + "/paychecks/" + paycheck['id'] + "/add-photo", formData, {
+            await axios.post("/paychecks/" + paycheck['id'] + "/add-photo", formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 },
             }).then((response) => {
                 let index = paycheck.files.length - 1
                 paycheck.files.splice(index, 0, response.data)
-                loadPaychecks()
+                loadPaychecks(false)
             })
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
     }
 
     const deletePhoto = async (paycheck, image, index) => {
         try {
-            await axios.delete(apiUrl + "/paychecks/photo/" + image.id).then(() => {
+            await axios.delete("/paychecks/photo/" + image.id).then(() => {
                 paycheck.files.splice(index, 1)
                 activeImg > 0 ? setActiveImg(activeImg--) : setActiveImg(activeImg++)
-                loadPaychecks()
+                loadPaychecks(false)
             })
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
 
     }
@@ -672,10 +729,12 @@ export default function PayChecks() {
         });
         setApprovedLoading(temp)
         try {
-            const response = await axios.post(apiUrl + "/paychecks/" + id + "/check")
-            loadPaychecks()
+            const response = await axios.post("/paychecks/" + id + "/check")
+            loadPaychecks(false)
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
         setApprovedLoading(oldtemp)
     }
@@ -690,10 +749,12 @@ export default function PayChecks() {
         });
         setDeleteLoading(temp)
         try {
-            const response = await axios.delete(apiUrl + "/paychecks/" + id)
-            loadPaychecks()
+            const response = await axios.delete("/paychecks/" + id)
+            loadPaychecks(false)
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
         setDeleteLoading(oldtemp)
     }
@@ -712,12 +773,14 @@ export default function PayChecks() {
         try {
 
             if (action === 0)
-                await axios.post(apiUrl + "/paychecks/" + id + "/archive")
+                await axios.post("/paychecks/" + id + "/archive")
             else
-                await axios.post(apiUrl + "/paychecks/" + id + "/restore")
-            loadPaychecks()
+                await axios.post("/paychecks/" + id + "/restore")
+            loadPaychecks(false)
         } catch (err) {
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
         setArchivalLoading(oldtemp)
     }
@@ -758,13 +821,17 @@ export default function PayChecks() {
     const createTable = async () => {
         setLoadExcelButton(true)
         try {
-            axios.get(apiUrl + '/sheet').then((response) => {
+            axios.get('/sheet', {
+                params: allFilters
+            }).then((response) => {
                 setLoadExcelButton(false)
                 window.open(response.data, '_blank')
             })
         } catch (err) {
             setLoadExcelButton(false)
             console.log(err)
+            setErrorMessage("Ошибка: "+err.message)
+            setErrorNotify(true)
         }
     }
 
@@ -825,7 +892,6 @@ export default function PayChecks() {
             checked: status,
             archive: type === 3
         }
-        console.log(filters)
         setAllFilters(filters)
         setLoadSetFilters(false)
     }
@@ -883,6 +949,7 @@ export default function PayChecks() {
         } else {
             setSort(sort.filter(item => item[0] !== field))
         }
+
     }
 
     const resetCheckboxes = () => {
@@ -906,188 +973,193 @@ export default function PayChecks() {
                         <Sidebar active={0} />
                     </div>
                     <div className=' w-3/5'>
-                        {!paychecks || paychecks.length === 0 ?
-                            <div className='w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5'>
-                                {loadPaycheksList ? <CircularProgress /> : "Чеков нет"}
-                            </div>
-                            :
-                            paychecks.map((payCheck, index) => {
-                                return (
-                                    <div key={index} className='w-full mt-6 flex relative bg-white shadow-md shadow-white rounded-xl items-center p-5'>
-                                        <StatusIcon checked={payCheck.checked} archive={payCheck.archive} />
+                        {loadPaycheksList ?
+                            (<div className='w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5'>
+                                <CircularProgress />
+                            </div>)
+                            : (!paychecks || paychecks.length === 0 ?
+                                <div className='w-full text-xl min-w-96 mt-6 flex justify-center bg-white shadow-md shadow-white rounded-xl items-center p-5'>
+                                    Чеков нет
+                                </div>
+                                :
+                                paychecks.map((payCheck, index) => {
+                                    return (
+                                        <div key={index} className='w-full mt-6 flex relative bg-white shadow-md shadow-white rounded-xl items-center p-5'>
+                                            <StatusIcon checked={payCheck.checked} archive={payCheck.archive} />
 
-                                        <div className='w-2/5 min-w-32'>
-                                            <img src={payCheck['files'][0]['path'] ?? null} onClick={() => handleOpenImg(payCheck)} className='w-full max-h-96  cursor-pointer rounded-xl' alt='Изображения нет'></img>
-                                        </div>
+                                            <div className='w-2/5 min-w-32'>
+                                                <img src={payCheck['files'][0]['path'] ?? null} onClick={() => handleOpenImg(payCheck)} className='w-full max-h-96  cursor-pointer rounded-xl' alt='Изображения нет'></img>
+                                            </div>
 
-                                        <div className='ml-4 text-grafit text-lg w-full flex-wrap text-left flex flex-col justify-center h-full'>
-                                            <div className=''>Имя: {payCheck.username}</div>
-                                            {isRedact[payCheck.id]['company'] ?
-                                                <div className='flex'>
-                                                    <TextField variant="outlined" size="small" placeholder='Компания' value={newCompany} onChange={handleNewCompany} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewCompany(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'company', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className='flex items-center mb-1'>Компания: {payCheck.company}
-                                                    <IconButton disabled={redactCompany} onClick={() => startRedact(payCheck.id, 'company')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['organization'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" size="small" placeholder='Компания-продавец' value={newOrganization} onChange={handleNewOrganization} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewOrganization(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'organization', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Компания-продавец: {payCheck.organization}
-                                                    <IconButton disabled={redactOrganization} onClick={() => startRedact(payCheck.id, 'organization')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['locality'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" size="small" placeholder='Населенный пункт' value={newLocality} onChange={handleNewLocality} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewLocality(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'locality', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Населенный пункт: {payCheck.locality}
-                                                    <IconButton disabled={redactLocality} onClick={() => startRedact(payCheck.id, 'locality')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['payment_method'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" size="small" placeholder='Метод оплаты' value={newPaymentMethod} onChange={handleNewPaymentMethod} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewPaymentMethod(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'payment_method', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Способ оплаты: {payCheck.payment_method}
-                                                    <IconButton disabled={redactPaymentMethod} onClick={() => startRedact(payCheck.id, 'payment_method')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['project'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" size="small" placeholder='Проект' value={newProject} onChange={handleNewProject} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewProject(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'project', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Проект: {payCheck.project}
-                                                    <IconButton disabled={redactProject} onClick={() => startRedact(payCheck.id, 'project')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['sum'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" type='number' size="small" placeholder='Сумма оплаты' value={newSum} onChange={handleNewSum} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewSum(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'sum', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Сумма: {payCheck.sum}
-                                                    <IconButton disabled={redactSum} onClick={() => startRedact(payCheck.id, 'sum')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['pay_date'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" type='date' size="small" placeholder='Дата оплаты' value={newPayDate} onChange={handleNewPayDate} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewPayDate(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'pay_date', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Дата оплаты: {payCheck.pay_date}
-                                                    <IconButton disabled={redactPayDate} onClick={() => startRedact(payCheck.id, 'pay_date')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            {isRedact[payCheck.id]['comment'] ?
-                                                <div className='flex mt-2'>
-                                                    <TextField variant="outlined" type='text' size="small" placeholder='Комментарий' value={newComment} onChange={handleNewComment} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
-                                                    <IconButton onClick={() => saveNewComment(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
-                                                        <Done fontSize='small' />
-                                                    </IconButton>
-                                                    <IconButton onClick={() => changeIsRedact(payCheck.id, 'comment', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
-                                                        <Close fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                                :
-                                                <div className=' flex items-center mb-1'>Комментарий: {payCheck.comment}
-                                                    <IconButton disabled={redactComment} onClick={() => startRedact(payCheck.id, 'comment')} sx={{ cursor: "pointer" }} >
-                                                        <Edit fontSize='small' />
-                                                    </IconButton>
-                                                </div>
-                                            }
-                                            <div className='mb-2'>Статус: {payCheck.checked ? "Проверено" : "Новый"}</div>
-                                            <div className=''>Дата создания: {payCheck.date}</div>
-                                            <div className='flex mt-4 text-grafit text-lg w-full text-left  h-full'>
-                                                <ThemeProvider theme={theme}>
-
-                                                    <div className='flex flex-wrap'>
-                                                        <ApprovedButton checked={payCheck.checked} index={index} archive={payCheck.archive} id={payCheck.id} />
-                                                        {payCheck.archive ?
-                                                            <Box mr={2} mt={2}><LoadingButton variant="contained" sx={{
-                                                                fontSize: 14,
-                                                                textTransform: "none",
-                                                            }} loading={archivalLoading[index]} className='mr-2' onClick={() => archived(index, 1, payCheck.id)} color='silver' >Восстановить</LoadingButton></Box>
-                                                            :
-                                                            <Box mr={2} mt={2}><LoadingButton variant="contained" sx={{
-                                                                fontSize: 14,
-                                                                textTransform: "none",
-                                                            }} loading={archivalLoading[index]} className='mr-2' onClick={() => archived(index, 0, payCheck.id)} color='silver' >Архивировать</LoadingButton></Box>
-                                                        }
-                                                        <Box mt={2}><LoadingButton sx={{
-                                                            fontSize: 14,
-                                                            textTransform: "none",
-                                                        }} variant="outlined" loading={deleteLoading[index]} onClick={() => remove(payCheck.id, index)} color='grafit' >Удалить</LoadingButton></Box>
+                                            <div className='ml-4 text-grafit text-lg w-full flex-wrap text-left flex flex-col justify-center h-full'>
+                                                <div className=''>Имя: {payCheck.username}</div>
+                                                {isRedact[payCheck.id]['company'] ?
+                                                    <div className='flex'>
+                                                        <TextField variant="outlined" size="small" placeholder='Компания' value={newCompany} onChange={handleNewCompany} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewCompany(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'company', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
                                                     </div>
+                                                    :
+                                                    <div className='flex items-center mb-1'>Компания: {payCheck.company}
+                                                        <IconButton disabled={redactCompany} onClick={() => startRedact(payCheck.id, 'company')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
 
-                                                </ThemeProvider>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['organization'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" size="small" placeholder='Компания-продавец' value={newOrganization} onChange={handleNewOrganization} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewOrganization(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'organization', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Компания-продавец: {payCheck.organization}
+                                                        <IconButton disabled={redactOrganization} onClick={() => startRedact(payCheck.id, 'organization')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['locality'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" size="small" placeholder='Населенный пункт' value={newLocality} onChange={handleNewLocality} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewLocality(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'locality', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Населенный пункт: {payCheck.locality}
+                                                        <IconButton disabled={redactLocality} onClick={() => startRedact(payCheck.id, 'locality')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['payment_method'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" size="small" placeholder='Метод оплаты' value={newPaymentMethod} onChange={handleNewPaymentMethod} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewPaymentMethod(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'payment_method', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Способ оплаты: {payCheck.payment_method}
+                                                        <IconButton disabled={redactPaymentMethod} onClick={() => startRedact(payCheck.id, 'payment_method')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['project'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" size="small" placeholder='Проект' value={newProject} onChange={handleNewProject} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewProject(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'project', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Проект: {payCheck.project}
+                                                        <IconButton disabled={redactProject} onClick={() => startRedact(payCheck.id, 'project')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['sum'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" type='number' size="small" placeholder='Сумма оплаты' value={newSum} onChange={handleNewSum} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewSum(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'sum', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Сумма: {payCheck.sum}
+                                                        <IconButton disabled={redactSum} onClick={() => startRedact(payCheck.id, 'sum')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['pay_date'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" type='date' size="small" placeholder='Дата оплаты' value={newPayDate} onChange={handleNewPayDate} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewPayDate(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'pay_date', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Дата оплаты: {payCheck.pay_date}
+                                                        <IconButton disabled={redactPayDate} onClick={() => startRedact(payCheck.id, 'pay_date')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                {isRedact[payCheck.id]['comment'] ?
+                                                    <div className='flex mt-2'>
+                                                        <TextField variant="outlined" type='text' size="small" placeholder='Комментарий' value={newComment} onChange={handleNewComment} className='bg-white w-3/4 2xl:w-3/4 rounded-lg' />
+                                                        <IconButton onClick={() => saveNewComment(payCheck.id)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 2 }} >
+                                                            <Done fontSize='small' />
+                                                        </IconButton>
+                                                        <IconButton onClick={() => changeIsRedact(payCheck.id, 'comment', false)} sx={{ marginBottom: 1, cursor: "pointer", marginLeft: 1 }} >
+                                                            <Close fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                    :
+                                                    <div className=' flex items-center mb-1'>Комментарий: {payCheck.comment}
+                                                        <IconButton disabled={redactComment} onClick={() => startRedact(payCheck.id, 'comment')} sx={{ cursor: "pointer" }} >
+                                                            <Edit fontSize='small' />
+                                                        </IconButton>
+                                                    </div>
+                                                }
+                                                <div className='mb-2'>Статус: {payCheck.checked ? "Проверено" : "Новый"}</div>
+                                                <div className=''>Дата создания: {payCheck.date}</div>
+                                                <div className='flex mt-4 text-grafit text-lg w-full text-left  h-full'>
+                                                    <ThemeProvider theme={theme}>
+
+                                                        <div className='flex flex-wrap'>
+                                                            <ApprovedButton checked={payCheck.checked} index={index} archive={payCheck.archive} id={payCheck.id} />
+                                                            {payCheck.archive ?
+                                                                <Box mr={2} mt={2}><LoadingButton variant="contained" sx={{
+                                                                    fontSize: 14,
+                                                                    textTransform: "none",
+                                                                }} loading={archivalLoading[index]} className='mr-2' onClick={() => archived(index, 1, payCheck.id)} color='silver' >Восстановить</LoadingButton></Box>
+                                                                :
+                                                                <Box mr={2} mt={2}><LoadingButton variant="contained" sx={{
+                                                                    fontSize: 14,
+                                                                    textTransform: "none",
+                                                                }} loading={archivalLoading[index]} className='mr-2' onClick={() => archived(index, 0, payCheck.id)} color='silver' >Архивировать</LoadingButton></Box>
+                                                            }
+                                                            <Box mt={2}><LoadingButton sx={{
+                                                                fontSize: 14,
+                                                                textTransform: "none",
+                                                            }} variant="outlined" loading={deleteLoading[index]} onClick={() => remove(payCheck.id, index)} color='grafit' >Удалить</LoadingButton></Box>
+                                                        </div>
+
+                                                    </ThemeProvider>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })
+                                    );
+                                }))
                         }
                     </div>
 
@@ -1336,6 +1408,16 @@ export default function PayChecks() {
                     </div>
                 </div>
             </div >
+            <Snackbar
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                open={errorNotify}
+                autoHideDuration={5000}
+                onClose={closeError}
+            >
+                <Alert variant='filled' onClose={closeError} severity='error'>
+                    {errorMessage}
+                </Alert>
+            </Snackbar>
         </div >
     );
 }

@@ -8,6 +8,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import axios from "axios";
+import Snackbar from '@mui/material/Snackbar';
+import { Alert } from "@mui/material";
 
 const theme = createTheme({
     palette: {
@@ -59,12 +61,22 @@ export default function Companies() {
     const [modalIndex, setModalIndex] = React.useState(0);
     const [loadingSave, setLoadingSave] = React.useState(false)
     const [loadCompaniesList, setLoadCompaniesList] = React.useState(false)
-    const apiUrl = "http://127.0.0.1:8000"
+    const [errorNotify, setErrorNotify] = React.useState(false)
+    const [errorMessage, setErrorMessage] = React.useState("")
+    const closeError = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setErrorNotify(false)
+        setTimeout(() => {
+            setErrorMessage("")
+        }, 500);
+    }
     // axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any"
 
     const loadCompanies = async () => {
         setLoadCompaniesList(true)
-        await axios.get(apiUrl+"/api/companies", Headers).then((response) => {
+        await axios.get("/companies", Headers).then((response) => {
             const allCompanies = response.data
             setCompanies(allCompanies)
         })
@@ -90,16 +102,18 @@ export default function Companies() {
         if (!projectId) {
             try{
                 setLoadingSave(true)
-                const response = await axios.post( apiUrl+"/api/companies/"+companyid+"/projects", {
+                const response = await axios.post("/companies/"+companyid+"/projects", {
                     title: projectName
                 })
                 setProjectName("")
                 loadCompanies()
                 setLoadingSave(false)
                 setOpenAddProject(false);
-            } catch($err) {
+            } catch(err) {
                 setLoadingSave(false)
-                console.log($err)
+                setErrorMessage("Ошибка: " + err.message)
+                setErrorNotify(true)
+                console.log(err)
             }
         } else {
             const newCompaniesList = companies.map((el, i) => {
@@ -116,10 +130,12 @@ export default function Companies() {
             })
             setCompanies(newCompaniesList)
             try {
-                const response = await axios.delete( apiUrl+"/api/companies/"+companyid+"/projects/"+projectId)
+                const response = await axios.delete("/companies/"+companyid+"/projects/"+projectId)
                 loadCompanies()
-            } catch($err){
-                console.log($err)
+            } catch(err){
+                setErrorMessage("Ошибка: " + err.message)
+                setErrorNotify(true)
+                console.log(err)
             }
             
         }
@@ -130,16 +146,18 @@ export default function Companies() {
             const newCompaniesList = companies.filter(el => el.id !== companyId)
             setCompanies(newCompaniesList)
             try{
-                const response = await axios.delete(apiUrl+"/api/companies/"+companyId)
-            } catch ($err){
-                console.log($err)
+                const response = await axios.delete("/companies/"+companyId)
+            } catch (err){
+                setErrorMessage("Ошибка: " + err.message)
+                setErrorNotify(true)
+                console.log(err)
             }
             
         } else {
 
             try{
                 setLoadingSave(true)
-                const response = await axios.post(apiUrl+"/api/companies", {
+                const response = await axios.post("/api/companies", {
                     title: companyName
                 })
                 
@@ -147,8 +165,10 @@ export default function Companies() {
                 loadCompanies()
                 setCompanyName("")
                 setOpenAddCompany(false)
-            } catch ($err){
-                console.log($err)
+            } catch (err){
+                setErrorMessage("Ошибка: " + err.message)
+                setErrorNotify(true)
+                console.log(err)
                 setLoadingSave(false)
             }
 
@@ -315,6 +335,16 @@ export default function Companies() {
                     <div className="w-1/3 h-max ml-4 mt-6"></div>
                 </div>
             </div>
+            <Snackbar
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                open={errorNotify}
+                autoHideDuration={5000}
+                onClose={closeError}
+            >
+                <Alert variant='filled' onClose={closeError} severity='error'>
+                    {errorMessage}
+                </Alert>
+            </Snackbar>
         </div>
     );
 }

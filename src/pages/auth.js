@@ -10,6 +10,8 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Snackbar from '@mui/material/Snackbar';
+import { Alert } from "@mui/material";
 
 const theme = createTheme({
     palette: {
@@ -49,6 +51,17 @@ const Auth = () => {
     const [loadingBtn, setLoadingBtn] = useState(false)
     const [isError, setIsError] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+    const [errorNotify, setErrorNotify] = React.useState(false)
+    const [errorMessage, setErrorMessage] = React.useState("")
+    const closeError = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setErrorNotify(false)
+        setTimeout(() => {
+            setErrorMessage("")
+        }, 500);
+    }
 
     const handleEmail = (e) => {
         setEmail(e.target.value)
@@ -66,7 +79,6 @@ const Auth = () => {
                 password: password
             })
             .then ((response => {
-                console.log(response)
                 localStorage.setItem("vostorg-token", response.data.token)
                 navigate('/')
                 setLoadingBtn(false)
@@ -82,9 +94,13 @@ const Auth = () => {
                 } 
             } else if (error.request) {
                 // Request made but no response is received from the server.
+                setErrorMessage("Ошибка: " + error.message)
+                setErrorNotify(true)
                 console.log(error.request);
             } else {
                 // Error occured while setting up the request
+                setErrorMessage("Ошибка: " + error.message)
+                setErrorNotify(true)
                 console.log('Error', error.message);
             }
             setLoadingBtn(false)
@@ -157,6 +173,16 @@ const Auth = () => {
                 </ThemeProvider>
 
             </div>
+            <Snackbar
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                open={errorNotify}
+                autoHideDuration={5000}
+                onClose={closeError}
+            >
+                <Alert variant='filled' onClose={closeError} severity='error'>
+                    {errorMessage}
+                </Alert>
+            </Snackbar>
         </div>
     )
 }
